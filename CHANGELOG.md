@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- `muda recipes` with only packs that hold no recipes yet (the aws pack today) names those packs instead of saying no packs are cached.
+
 ## 0.4.0
 
 - muda carries no recipes. Recipes come in packs: a pack is a small standard of its own (its waste classes, stacks, recipes and skill) bought on subaud.tools and synced to this machine with `muda packs sync` after `muda login`. `muda packs` lists what the account owns.
