@@ -46,6 +46,13 @@ func Recipes() tools.Command {
 			if err != nil {
 				return err
 			}
+			if len(lib.Recipes) == 0 && len(lib.Packs) > 0 {
+				ids := make([]string, len(lib.Packs))
+				for i, p := range lib.Packs {
+					ids[i] = p.ID
+				}
+				return tools.Exitf(1, "the cached packs (%s) hold no recipes yet", strings.Join(ids, ", ")).WithHint("run `muda packs sync` for new recipes; more packs are sold at " + packs.AccountPage)
+			}
 			if len(lib.Recipes) == 0 {
 				return tools.Exitf(1, "no recipe packs are cached").WithHint("sign this machine in with `muda login`, then run `muda packs sync`; packs are sold at " + packs.AccountPage)
 			}
