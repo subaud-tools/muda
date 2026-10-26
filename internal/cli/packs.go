@@ -65,7 +65,11 @@ func Packs(env Env) tools.Command {
 						fmt.Fprintf(&b, "%s: owned, cached %s, unreadable (%v); run `muda packs sync`\n", e.ID, e.Tree, err)
 						continue
 					}
-					fmt.Fprintf(&b, "%s: owned, cached %s; stacks %s\n", e.ID, e.Tree, strings.Join(p.Stacks, ", "))
+					stacks := strings.Join(p.Stacks, ", ")
+					if stacks == "" {
+						stacks = "none yet"
+					}
+					fmt.Fprintf(&b, "%s: owned, cached %s; stacks %s\n", e.ID, e.Tree, stacks)
 				}
 			}
 			fmt.Fprintf(&b, "Cache: %s (synced %s)\n", cache.Dir, s.Synced.Format("2006-01-02 15:04 MST"))
