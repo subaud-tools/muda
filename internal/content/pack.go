@@ -38,23 +38,9 @@ var packID = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 // ReadPack reads a pack folder. Malformed metadata is an error; the content
 // check (CheckPack) judges what the files say.
 func ReadPack(fsys fs.FS) (Pack, error) {
-	b, err := fs.ReadFile(fsys, "pack.toml")
-	if err != nil {
-		return Pack{}, fmt.Errorf("read pack: %w", err)
-	}
-	var m manifest
-	md, err := toml.Decode(string(b), &m)
+	m, err := readManifest(fsys)
 	if err != nil {
 		return Pack{}, fmt.Errorf("pack.toml: %w", err)
-	}
-	if extra := md.Undecoded(); len(extra) > 0 {
-		return Pack{}, fmt.Errorf("pack.toml: unknown key %s", extra[0])
-	}
-	if !packID.MatchString(m.ID) {
-		return Pack{}, fmt.Errorf("pack.toml: invalid id %q", m.ID)
-	}
-	if _, err := parseRange(m.Muda); err != nil {
-		return Pack{}, fmt.Errorf("pack.toml: muda: %w", err)
 	}
 	p := Pack{ID: m.ID, Muda: m.Muda, Stacks: m.Stacks, FS: fsys}
 	if b, err := fs.ReadFile(fsys, "standard.md"); err == nil {
@@ -81,6 +67,28 @@ func ReadPack(fsys fs.FS) (Pack, error) {
 		p.Recipes[i].Pack = p.ID
 	}
 	return p, nil
+}
+
+func readManifest(fsys fs.FS) (manifest, error) {
+	var m manifest
+	b, err := fs.ReadFile(fsys, "pack.toml")
+	if err != nil {
+		return m, err
+	}
+	md, err := toml.Decode(string(b), &m)
+	if err != nil {
+		return m, err
+	}
+	if extra := md.Undecoded(); len(extra) > 0 {
+		return m, fmt.Errorf("unknown key %s", extra[0])
+	}
+	if !packID.MatchString(m.ID) {
+		return m, fmt.Errorf("invalid id %q", m.ID)
+	}
+	if _, err := parseRange(m.Muda); err != nil {
+		return m, fmt.Errorf("muda: %w", err)
+	}
+	return m, nil
 }
 
 // Library is muda's own standard merged with the packs it holds: classes,

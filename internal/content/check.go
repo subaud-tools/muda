@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -45,87 +46,158 @@ func Check(fsys fs.FS, knownCommand func(args []string) bool) []Problem {
 		add("recipes", err.Error())
 	}
 	for _, r := range rs {
-		p := "recipes/" + r.ID + ".md"
-		if !recipeID.MatchString(r.ID) {
-			add(p, "invalid recipe ID")
-		}
-		for _, w := range r.Waste {
-			if !contains(catalog, w) {
-				add(p, "unknown waste: "+w)
-			}
-		}
-		for _, s := range r.Signals {
-			if !signal.Known(s) {
-				add(p, "unknown signal: "+s)
-			}
-		}
-		for _, s := range r.Stacks {
-			if !contains(stacks, s) {
-				add(p, "unknown stack: "+s)
-			}
-			if strings.TrimSpace(r.StackSections[s]) == "" {
-				add(p, "missing stack section: "+s)
-			}
-		}
-		for s := range r.StackSections {
-			if !contains(r.Stacks, s) {
-				add(p, "undeclared stack section: "+s)
-			}
-		}
-		for _, s := range SectionNames {
-			if strings.TrimSpace(r.Sections[s]) == "" {
-				add(p, "missing section: "+s)
-			}
-		}
-		for s := range r.Sections {
-			if !contains(SectionNames, s) {
-				add(p, "unknown section: "+s)
-			}
-		}
+		checkRecipe(r, catalog, stacks, add)
 	}
 	// Walk original files too: malformed recipes must not hide bad commands or facts.
 	for _, dir := range []string{"standard", "recipes", "skills"} {
-		if _, e := fs.Stat(fsys, dir); e != nil {
-			if dir != "skills" || !errors.Is(e, fs.ErrNotExist) {
-				add(dir, fmt.Sprintf("read content: %v", e))
-			}
-			continue
+		checkFiles(fsys, dir, dir == "skills", knownCommand, add)
+	}
+	sortProblems(problems)
+	return problems
+}
+
+// CheckPack checks a pack folder as Check checks muda's own content: against
+// this muda's standard, signals and commands (knownCommand), and the pack's
+// own stacks and classes. Paths are relative to the pack folder.
+func CheckPack(base, pack fs.FS, knownCommand func([]string) bool) []Problem {
+	var problems []Problem
+	add := func(p, msg string) { problems = append(problems, Problem{p, msg}) }
+	var catalog, own []string
+	if b, err := fs.ReadFile(base, "standard/standard.md"); err != nil {
+		add("standard.md", fmt.Sprintf("read muda's standard: %v", err))
+	} else if catalog, err = wastes(string(b)); err != nil {
+		add("standard.md", "muda's standard: "+err.Error())
+	}
+	m, err := readManifest(pack)
+	if err != nil {
+		add("pack.toml", err.Error())
+	}
+	if b, err := fs.ReadFile(pack, "standard.md"); err == nil {
+		text := string(b)
+		if own, err = wastes(text); err != nil {
+			add("standard.md", err.Error())
 		}
-		err := fs.WalkDir(fsys, dir, func(p string, d fs.DirEntry, e error) error {
-			if e != nil {
-				add(p, fmt.Sprintf("read content: %v", e))
-				return nil
+		if _, ok := section(text, "Candidate wastes"); ok {
+			if _, err = candidates(text); err != nil {
+				add("standard.md", err.Error())
 			}
-			if d.IsDir() || path.Ext(p) != ".md" {
-				return nil
-			}
-			b, e := fs.ReadFile(fsys, p)
-			if e != nil {
-				add(p, fmt.Sprintf("read content: %v", e))
-				return nil
-			}
-			text := string(b)
-			if ProjectFacts.Find(text) != "" {
-				add(p, "project facts are forbidden")
-			}
-			// Only a direct skills/<name>/SKILL.md may use the single
-			// evidence-handoff redirect, because skills.Lint validates exactly
-			// those files (target, JSON output, command). Every other Markdown
-			// file, including supporting files under skills/, may not redirect.
-			checkExamples(text, dir == "recipes", skillEntry(p), knownCommand, func(msg string) { add(p, msg) })
-			return nil
-		})
-		if err != nil {
-			add(dir, fmt.Sprintf("read content: %v", err))
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		add("standard.md", fmt.Sprintf("read content: %v", err))
+	}
+	for _, c := range own {
+		if contains(catalog, c) {
+			add("standard.md", "class "+c+" is muda's own")
 		}
 	}
+	entries, err := fs.ReadDir(pack, "recipes")
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		add("recipes", fmt.Sprintf("read content: %v", err))
+	}
+	known := append(slices.Clone(catalog), own...)
+	rs, err := readRecipes(pack, entries)
+	if err != nil {
+		add("recipes", err.Error())
+	}
+	for _, r := range rs {
+		checkRecipe(r, known, m.Stacks, add)
+	}
+	for _, root := range []string{"standard.md", "recipes", "skill"} {
+		checkFiles(pack, root, true, knownCommand, add)
+	}
+	sortProblems(problems)
+	return problems
+}
+
+// checkRecipe checks one recipe's metadata and sections against the classes
+// and stacks it may name.
+func checkRecipe(r Recipe, catalog, stacks []string, add func(p, msg string)) {
+	p := "recipes/" + r.ID + ".md"
+	if !recipeID.MatchString(r.ID) {
+		add(p, "invalid recipe ID")
+	}
+	for _, w := range r.Waste {
+		if !contains(catalog, w) {
+			add(p, "unknown waste: "+w)
+		}
+	}
+	for _, s := range r.Signals {
+		if !signal.Known(s) {
+			add(p, "unknown signal: "+s)
+		}
+	}
+	for _, s := range r.Stacks {
+		if !contains(stacks, s) {
+			add(p, "unknown stack: "+s)
+		}
+		if strings.TrimSpace(r.StackSections[s]) == "" {
+			add(p, "missing stack section: "+s)
+		}
+	}
+	for s := range r.StackSections {
+		if !contains(r.Stacks, s) {
+			add(p, "undeclared stack section: "+s)
+		}
+	}
+	for _, s := range SectionNames {
+		if strings.TrimSpace(r.Sections[s]) == "" {
+			add(p, "missing section: "+s)
+		}
+	}
+	for s := range r.Sections {
+		if !contains(SectionNames, s) {
+			add(p, "unknown section: "+s)
+		}
+	}
+}
+
+// checkFiles walks the original Markdown under root (a directory or a file),
+// independently of frontmatter parsing. A missing root is a problem unless
+// it is optional.
+func checkFiles(fsys fs.FS, root string, optional bool, knownCommand func([]string) bool, add func(p, msg string)) {
+	if _, e := fs.Stat(fsys, root); e != nil {
+		if !optional || !errors.Is(e, fs.ErrNotExist) {
+			add(root, fmt.Sprintf("read content: %v", e))
+		}
+		return
+	}
+	err := fs.WalkDir(fsys, root, func(p string, d fs.DirEntry, e error) error {
+		if e != nil {
+			add(p, fmt.Sprintf("read content: %v", e))
+			return nil
+		}
+		if d.IsDir() || path.Ext(p) != ".md" {
+			return nil
+		}
+		b, e := fs.ReadFile(fsys, p)
+		if e != nil {
+			add(p, fmt.Sprintf("read content: %v", e))
+			return nil
+		}
+		text := string(b)
+		if ProjectFacts.Find(text) != "" {
+			add(p, "project facts are forbidden")
+		}
+		// Only a direct skills/<name>/SKILL.md may use the single
+		// evidence-handoff redirect, because skills.Lint validates exactly
+		// those files (target, JSON output, command). Every other Markdown
+		// file, including supporting files under skills/, may not redirect.
+		checkExamples(text, root == "recipes", skillEntry(p), knownCommand, func(msg string) { add(p, msg) })
+		return nil
+	})
+	if err != nil {
+		add(root, fmt.Sprintf("read content: %v", err))
+	}
+}
+
+// sortProblems makes the order deterministic: by path, then message.
+func sortProblems(problems []Problem) {
 	sort.Slice(problems, func(i, j int) bool {
 		if problems[i].Path == problems[j].Path {
 			return problems[i].Message < problems[j].Message
 		}
 		return problems[i].Path < problems[j].Path
 	})
-	return problems
 }
 
 // Check the original Markdown independently of frontmatter parsing, so a
