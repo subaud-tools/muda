@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- muda carries no recipes. Recipes come in packs: a pack is a small standard of its own (its waste classes, stacks, recipes and skill) bought on subaud.tools and synced to this machine with `muda packs sync` after `muda login`. `muda packs` lists what the account owns.
+- `muda recipes` and `muda recipe` read from the synced packs and, for a recipe in a pack the account doesn't own, name the pack and where to get it.
+- `muda pack check DIR...` checks pack folders alone and together.
+- `muda record` records a recipe or a non-W class it can't check against a synced pack as `unchecked` instead of refusing it; W classes are checked as before.
+- Recipes R1 to R14 left this repository and the recipe-submission issue template is retired. Every earlier release keeps them under its MIT license.
+
 ## 0.3.0
 
 - Module path is now github.com/subaud-tools/muda; the source, issues and recipe submissions live at github.com/subaud-tools/muda.
