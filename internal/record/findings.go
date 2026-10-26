@@ -26,9 +26,10 @@ func allowed(a, b Status) bool {
 }
 
 // validateFinding checks a finding's fields. With a vocabulary (a value being
-// written), its waste and recipe must be on muda's current lists. Without one
-// (a value already stored), they are not judged against the lists, so a
-// candidate or recipe removed later leaves old records valid.
+// written), its waste and recipe must be on muda's current lists, except a
+// pack class or recipe ID muda can't check, which the caller marks unchecked.
+// Without one (a value already stored), they are not judged against the
+// lists, so a candidate or recipe removed later leaves old records valid.
 func validateFinding(f Finding, v *content.Vocabulary) error {
 	if !ValidFindingID(f.ID) {
 		return problem("invalid-finding-id", "findings.toml", f.ID)
@@ -41,9 +42,12 @@ func validateFinding(f Finding, v *content.Vocabulary) error {
 			return problem("missing-finding-fields", "findings.toml", f.ID+": waste, location, recipe, evidence, estimate and risk required")
 		}
 	} else {
-		candidate, err := checkWaste(*v, "findings.toml", f.ID, f.Waste)
-		if err != nil {
-			return err
+		candidate := false
+		if !packClass.MatchString(f.Waste) {
+			var err error
+			if candidate, err = checkWaste(*v, "findings.toml", f.ID, f.Waste); err != nil {
+				return err
+			}
 		}
 		// A candidate waste has no recipe yet; a W-class finding needs one.
 		switch {
@@ -51,7 +55,7 @@ func validateFinding(f Finding, v *content.Vocabulary) error {
 			return problem("candidate-recipe", "findings.toml", f.ID+": a candidate waste has no recipe")
 		case !candidate && f.Recipe == "":
 			return problem("missing-finding-fields", "findings.toml", f.ID+": waste, location, recipe, evidence, estimate and risk required")
-		case !candidate && !slices.Contains(v.Recipes, f.Recipe):
+		case !candidate && !slices.Contains(v.Recipes, f.Recipe) && !recipeID.MatchString(f.Recipe):
 			return problem("unknown-recipe", "findings.toml", f.ID+": "+f.Recipe)
 		}
 	}
@@ -116,6 +120,7 @@ func (s *Store) AddFinding(f Finding) (id string, err error) {
 	if err := validateFinding(f, &v); err != nil {
 		return "", err
 	}
+	f.Unchecked = unchecked(v, f)
 	doc.Findings = append(doc.Findings, f)
 	if err := s.writeTOML("findings.toml", doc); err != nil {
 		return "", err
@@ -202,6 +207,7 @@ func (s *Store) SetFinding(id string, p FindingPatch) (err error) {
 		var written *content.Vocabulary
 		if p.Waste != nil || p.Recipe != nil {
 			written = &v
+			f.Unchecked = unchecked(v, f)
 		}
 		if err := validateFinding(f, written); err != nil {
 			return err

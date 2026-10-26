@@ -18,25 +18,18 @@ type Vocabulary struct {
 
 // ReadVocabulary reads the standard and the recipes.
 func ReadVocabulary(fsys fs.FS) (Vocabulary, error) {
-	var v Vocabulary
-	b, err := fs.ReadFile(fsys, "standard/standard.md")
-	if err != nil {
-		return v, err
-	}
-	if v.Wastes, err = wastes(string(b)); err != nil {
-		return v, err
-	}
-	if v.Candidates, err = candidates(string(b)); err != nil {
-		return v, err
-	}
-	rs, err := Recipes(fsys)
-	if err != nil {
-		return v, err
-	}
-	for _, r := range rs {
+	lib, err := Load(fsys, nil, "")
+	return lib.Vocabulary(), err
+}
+
+// Vocabulary is what a finding may name with this library: its classes,
+// candidates and recipe IDs.
+func (l Library) Vocabulary() Vocabulary {
+	v := Vocabulary{Wastes: l.Wastes, Candidates: l.Candidates}
+	for _, r := range l.Recipes {
 		v.Recipes = append(v.Recipes, r.ID)
 	}
-	return v, nil
+	return v
 }
 
 // KnownWaste reports whether w is a class in the standard's catalog.

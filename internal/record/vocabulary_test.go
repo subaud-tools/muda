@@ -34,27 +34,66 @@ func wantCode(t *testing.T, err error, code string) {
 func TestFindingWasteAndRecipeVocabulary(t *testing.T) {
 	for _, tc := range []struct {
 		name, waste, recipe, code string
+		unchecked                 bool
 	}{
-		{"W-class with recipe", "W2", "R1", ""},
-		{"listed candidate without recipe", "candidate:slow-thing", "", ""},
-		{"unknown W-class", "W55", "R1", "unknown-waste"},
-		{"free text waste", "waiting", "R1", "unknown-waste"},
-		{"unlisted candidate", "candidate:made-up", "", "unknown-waste"},
-		{"empty candidate slug", "candidate:", "", "unknown-waste"},
-		{"unknown recipe", "W1", "R99", "unknown-recipe"},
-		{"candidate with recipe", "candidate:slow-thing", "R1", "candidate-recipe"},
-		{"W-class without recipe", "W1", "", "missing-finding-fields"},
+		{"W-class with recipe", "W2", "R1", "", false},
+		{"listed candidate without recipe", "candidate:slow-thing", "", "", false},
+		{"unknown W-class", "W55", "R1", "unknown-waste", false},
+		{"free text waste", "waiting", "R1", "unknown-waste", false},
+		{"unlisted candidate", "candidate:made-up", "", "unknown-waste", false},
+		{"empty candidate slug", "candidate:", "", "unknown-waste", false},
+		// AGNT20: a recipe or pack class muda can't check is recorded, marked.
+		{"recipe in a pack muda doesn't hold", "W1", "R99", "", true},
+		{"class in a pack muda doesn't hold", "A3", "R99", "", true},
+		{"recipe that is no recipe ID", "W1", "fix it", "unknown-recipe", false},
+		{"candidate with recipe", "candidate:slow-thing", "R1", "candidate-recipe", false},
+		{"W-class without recipe", "W1", "", "missing-finding-fields", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := vocabStore(t).AddFinding(vocabFinding(tc.waste, tc.recipe))
-			if tc.code == "" {
-				if err != nil {
-					t.Fatal(err)
-				}
+			s := vocabStore(t)
+			id, err := s.AddFinding(vocabFinding(tc.waste, tc.recipe))
+			if tc.code != "" {
+				wantCode(t, err, tc.code)
 				return
 			}
-			wantCode(t, err, tc.code)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := storedFinding(t, s, id).Unchecked; got != tc.unchecked {
+				t.Errorf("unchecked = %v, want %v", got, tc.unchecked)
+			}
 		})
+	}
+}
+
+func storedFinding(t *testing.T, s *Store, id string) Finding {
+	t.Helper()
+	var doc findingsFile
+	if err := s.load("findings.toml", &doc); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range doc.Findings {
+		if f.ID == id {
+			return f
+		}
+	}
+	t.Fatalf("no finding %s", id)
+	return Finding{}
+}
+
+// Writing a recipe the vocabulary knows clears the mark.
+func TestSetFindingRechecksAnUncheckedFinding(t *testing.T) {
+	s := vocabStore(t)
+	id, err := s.AddFinding(vocabFinding("W1", "R99"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := "R1"
+	if err := s.SetFinding(id, FindingPatch{Recipe: &r}); err != nil {
+		t.Fatal(err)
+	}
+	if storedFinding(t, s, id).Unchecked {
+		t.Error("a checked recipe left the finding unchecked")
 	}
 }
 
@@ -133,6 +172,8 @@ func TestStoredRecordOutlivesListChange(t *testing.T) {
 	}
 }
 
+// The default vocabulary is muda's standard with the cached packs (TestMain
+// caches one with class A1 and recipe R40).
 func TestShippedVocabularyIsTheDefault(t *testing.T) {
 	s := store(t)
 	if _, err := s.AddFinding(vocabFinding("W55", "R1")); err == nil {
@@ -140,6 +181,13 @@ func TestShippedVocabularyIsTheDefault(t *testing.T) {
 	}
 	if _, err := s.AddFinding(vocabFinding("candidate:lingering-expand", "")); err != nil {
 		t.Fatal(err)
+	}
+	id, err := s.AddFinding(vocabFinding("A1", "R40"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if storedFinding(t, s, id).Unchecked {
+		t.Error("a cached pack's class and recipe were not checked")
 	}
 }
 
