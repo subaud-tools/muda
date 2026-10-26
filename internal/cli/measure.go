@@ -27,6 +27,7 @@ type Env struct {
 	HTTP      *http.Client
 	BaseURL   string // "" means the public GitHub API
 	CacheDir  string // "" means the family user cache dir
+	PacksAPI  string // "" means the access service; tests point it at a fake
 }
 
 // DefaultEnv reads the real environment, `gh auth token` and the origin remote.

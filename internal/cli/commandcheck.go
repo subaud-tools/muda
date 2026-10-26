@@ -88,6 +88,10 @@ func CommandChecker(app *tools.App) (func([]string) bool, error) {
 		if c.Name == "standard" {
 			return validateStandardArgs(rest) == nil
 		}
+		if c.Name == "packs" {
+			_, err := parsePacks(rest)
+			return err == nil
+		}
 		if c.Name == "pack" {
 			_, err := parsePack(rest)
 			return err == nil

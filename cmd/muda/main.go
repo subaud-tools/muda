@@ -23,6 +23,7 @@ func newApp(env cli.Env) *tools.App {
 	app.Register(cli.Notices(env))
 	app.Register(cli.Record())
 	app.Register(cli.Compare(env))
+	app.Register(cli.Packs(env))
 	app.Register(cli.Recipes())
 	app.Register(cli.Recipe())
 	app.Register(cli.Standard())
