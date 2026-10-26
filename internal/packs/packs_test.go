@@ -184,3 +184,29 @@ func TestLibraryReadsTheOwnedCachedPacks(t *testing.T) {
 		t.Errorf("cached recipe missing: %+v", lib.Recipes)
 	}
 }
+
+// testdata/packs-sync-changed.json is the access service's own example answer,
+// copied from tools-ops access/API.md (example packs-sync-changed), whose
+// contract test checks it against the service. muda must read it as is.
+func TestSyncReadsTheServicesDocumentedAnswer(t *testing.T) {
+	answer, err := os.ReadFile("testdata/packs-sync-changed.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := cached(t)
+	api := service(t, string(answer), nil)
+	rs, err := c.Sync(context.Background(), api, nil, "sbt_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, r := range rs {
+		got[r.ID] = r.Status
+	}
+	if got["ci"] != "changed" || got["aws"] != "unavailable" {
+		t.Fatalf("statuses %v", got)
+	}
+	if _, err := os.Stat(filepath.Join(c.Dir, "ci", "pack.toml")); err != nil {
+		t.Error("the documented archive was not unpacked:", err)
+	}
+}
