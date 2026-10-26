@@ -41,12 +41,13 @@ workflows. There is no repo lint config. A real exception is a
   `unavailable` with a reason, never an empty success.
 - **Every number names its evidence.** A run, job, step, log line or file.
 - **Signal IDs are a contract.** Declare each one once, in `internal/signal`.
-  Recipes are checked against the registry.
+  Pack recipes are checked against the registry.
 
 ## No project facts
 
-Shipped content names no real project: not in code, skills, recipes, the
-standard or docs. Examples describe general patterns, not someone's pipeline.
+Shipped content names no real project: not in code, skills, the standard or
+docs, nor in a recipe pack. Examples describe general patterns, not someone's
+pipeline.
 
 Recorded test fixtures are the one exception. They may name their source, and
 the fixtures under `testdata/tackle` are recorded from the public
@@ -56,17 +57,20 @@ writes for secrets and private data before you commit it.
 
 ## The content checker
 
-`internal/content` checks everything embedded in the binary: the standard,
-the recipes and the skills (`content.go`). `go test ./cmd/muda` runs it over
-the real content. It fails on:
+`internal/content` checks what the binary embeds, the standard and the skills
+(`content.go`), and `go test ./cmd/muda` runs it over the real content. muda
+carries no recipes: they live in packs, folders of a private repository, and
+`muda pack check DIR` runs the same checker on one. Both fail on:
 
 - a recipe with a bad ID, or an unknown waste, signal or stack;
 - a recipe missing a required section;
 - a `sh` example whose `muda` command or flags the real CLI would reject;
 - a project name from its project-facts list.
 
-If you add a stack, add it to `recipes/stacks.txt`. If you add a waste class,
-add it to the standard's catalog.
+A pack lists its stacks in `pack.toml`, and any classes of its own in its
+`standard.md`. If you add a waste class to muda, add it to the standard's
+catalog. Tests that need recipes use the synthetic test pack in
+`internal/content/testdata/pack`.
 
 ## Skills and their word guards
 

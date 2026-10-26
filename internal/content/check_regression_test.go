@@ -2,6 +2,7 @@ package content_test
 
 import (
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -10,15 +11,32 @@ import (
 	"github.com/subaud-tools/muda/internal/content"
 )
 
+// libraryFixture is muda's own standard.
 func libraryFixture(t *testing.T) fstest.MapFS {
 	t.Helper()
+	b, err := fs.ReadFile(muda.Content, "standard/standard.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fstest.MapFS{"standard/standard.md": {Data: b}}
+}
+
+// testPack is the test pack in testdata/pack: synthetic recipes, not the ci
+// pack's.
+func testPack(t *testing.T) fstest.MapFS {
+	t.Helper()
 	f := fstest.MapFS{}
-	for _, p := range []string{"standard/standard.md", "recipes/stacks.txt", "recipes/R1.md"} {
-		b, err := fs.ReadFile(muda.Content, p)
-		if err != nil {
-			t.Fatal(err)
+	src := os.DirFS("testdata/pack")
+	err := fs.WalkDir(src, ".", func(p string, d fs.DirEntry, e error) error {
+		if e != nil || d.IsDir() {
+			return e
 		}
+		b, e := fs.ReadFile(src, p)
 		f[p] = &fstest.MapFile{Data: b}
+		return e
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	return f
 }
@@ -55,30 +73,25 @@ func TestCheckRequiredContent(t *testing.T) {
 		delete(f, "standard/standard.md")
 		wantProblem(t, content.Check(f, func([]string) bool { return true }), "standard/standard.md", "read required standard")
 	})
-	t.Run("stacks only", func(t *testing.T) {
-		f := libraryFixture(t)
-		delete(f, "recipes/R1.md")
-		wantProblem(t, content.Check(f, func([]string) bool { return true }), "recipes", "empty recipe inventory")
-	})
-	t.Run("missing recipes", func(t *testing.T) {
-		f := libraryFixture(t)
-		delete(f, "recipes/R1.md")
-		delete(f, "recipes/stacks.txt")
-		ps := content.Check(f, func([]string) bool { return true })
-		wantProblem(t, ps, "recipes", "read content")
-		wantProblem(t, ps, "recipes/stacks.txt", "read")
-	})
 	for _, op := range []string{"stat", "readdir"} {
 		t.Run(op, func(t *testing.T) {
-			wantProblem(t, content.Check(unreadableFS{libraryFixture(t), op}, func([]string) bool { return true }), "recipes", "permission denied")
+			wantProblem(t, content.CheckPack(muda.Content, unreadableFS{testPack(t), op}, func([]string) bool { return true }), "recipes", "permission denied")
 		})
+	}
+}
+
+// The aws pack ships its standard and skill before any recipe.
+func TestCheckPackAllowsNoRecipes(t *testing.T) {
+	f := fstest.MapFS{"pack.toml": testPack(t)["pack.toml"]}
+	if ps := content.CheckPack(muda.Content, f, func([]string) bool { return true }); len(ps) != 0 {
+		t.Fatal(ps)
 	}
 }
 func TestCheckDetectVerifyExamples(t *testing.T) {
 	for _, section := range []string{"Detect", "Verify"} {
 		for _, language := range []string{"bash", "", "prose"} {
 			t.Run(section+"/"+language, func(t *testing.T) {
-				f := libraryFixture(t)
+				f := testPack(t)
 				text := string(f["recipes/R1.md"].Data)
 				start := strings.Index(text, "## "+section+"\n")
 				end := strings.Index(text[start+4:], "\n## ") + start + 4
@@ -91,7 +104,7 @@ func TestCheckDetectVerifyExamples(t *testing.T) {
 					body = strings.ReplaceAll(body, "muda compare", "muda nonexistent")
 				}
 				f["recipes/R1.md"].Data = []byte(text[:start] + body + text[end:])
-				ps := content.Check(f, func(a []string) bool { return a[0] != "nonexistent" })
+				ps := content.CheckPack(muda.Content, f, func(a []string) bool { return a[0] != "nonexistent" })
 				wantProblem(t, ps, "recipes/R1.md", "missing sh command example: "+section)
 				if language != "prose" {
 					wantProblem(t, ps, "recipes/R1.md", "unsupported example fence language")
@@ -102,12 +115,12 @@ func TestCheckDetectVerifyExamples(t *testing.T) {
 	}
 }
 func TestCheckMalformedRecipeStillChecksRaw(t *testing.T) {
-	f := libraryFixture(t)
+	f := testPack(t)
 	text := strings.Replace(string(f["recipes/R1.md"].Data), "id: R1", "unexpected: value", 1)
 	text = strings.Replace(text, "muda scan", "muda nonexistent", 1) + "\nwidgetco\n"
 	f["recipes/R1.md"].Data = []byte(text)
 	fakeFacts(t)
-	ps := content.Check(f, func(a []string) bool { return a[0] != "nonexistent" })
+	ps := content.CheckPack(muda.Content, f, func(a []string) bool { return a[0] != "nonexistent" })
 	wantProblem(t, ps, "recipes/R1.md", "unknown command: nonexistent")
 	wantProblem(t, ps, "recipes/R1.md", "project facts are forbidden")
 }

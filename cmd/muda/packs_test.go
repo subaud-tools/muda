@@ -90,7 +90,7 @@ func TestPacksSyncThenRecipesReadThePack(t *testing.T) {
 	if code, out, errs := run(t, env, "packs", "sync"); code != 0 || !strings.Contains(out, "ci: updated") || !strings.Contains(out, "gcp: not owned") {
 		t.Fatalf("sync: %d %s %s", code, out, errs)
 	}
-	if code, out, errs := run(t, env, "packs"); code != 0 || !strings.Contains(out, "ci: owned, cached bbb") || !strings.Contains(out, "gcp: not owned") {
+	if code, out, errs := run(t, env, "packs"); code != 0 || !strings.Contains(out, "ci: owned, cached bbb; stacks go") || !strings.Contains(out, "gcp: not owned") {
 		t.Errorf("packs: %d %s %s", code, out, errs)
 	}
 	if code, out, errs := run(t, env, "recipes", "--stack", "go"); code != 0 || !strings.Contains(out, "R40: A fix from the pack") {

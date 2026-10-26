@@ -2,25 +2,23 @@ package main
 
 import (
 	"bytes"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/subaud-tools/muda"
 )
 
-// writePack writes a pack folder holding muda's R1 under the given stacks.
+// writePack writes a pack folder holding the test pack's R1 under the given
+// stacks.
 func writePack(t *testing.T, stacks string) string {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), "ci")
-	r1, err := fs.ReadFile(muda.Content, "recipes/R1.md")
+	r1, err := os.ReadFile("../../internal/content/testdata/pack/recipes/R1.md")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for name, data := range map[string]string{
-		"pack.toml":     "id = \"ci\"\nmuda = \">=0.3.0\"\nstacks = [" + stacks + "]\n",
+		"pack.toml":     "id = \"ci\"\nmuda = \">=0.1.0\"\nstacks = [" + stacks + "]\n",
 		"recipes/R1.md": string(r1),
 	} {
 		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o755); err != nil {

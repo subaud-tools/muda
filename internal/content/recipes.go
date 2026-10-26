@@ -1,4 +1,4 @@
-// Package content reads and validates the embedded delivery-waste library.
+// Package content reads and validates muda's standard and recipe packs.
 package content
 
 import (
@@ -27,21 +27,9 @@ type Recipe struct {
 
 var SectionNames = []string{"Symptom", "Detect", "Fix", "Stacks", "Traps", "Verify", "Evidence"}
 
-// Recipes parses recipes in numeric ID order. Malformed metadata is an error;
-// missing or unknown sections are reported by Check, not hidden by parsing.
-func Recipes(fsys fs.FS) ([]Recipe, error) {
-	entries, err := fs.ReadDir(fsys, "recipes")
-	if err != nil {
-		return nil, fmt.Errorf("read content: %w", err)
-	}
-	rs, err := readRecipes(fsys, entries)
-	if err == nil && len(rs) == 0 {
-		err = fmt.Errorf("empty recipe inventory")
-	}
-	return rs, err
-}
-
-// readRecipes parses the Markdown files among a recipes directory's entries.
+// readRecipes parses the Markdown files among a recipes directory's entries,
+// in numeric ID order. Malformed metadata is an error; missing or unknown
+// sections are reported by CheckPack, not hidden by parsing.
 func readRecipes(fsys fs.FS, entries []fs.DirEntry) ([]Recipe, error) {
 	var paths []string
 	for _, entry := range entries {
@@ -142,13 +130,4 @@ func parse(text string) (Recipe, error) {
 		}
 	}
 	return r, nil
-}
-
-// Stacks reads the shipped stack catalog.
-func Stacks(fsys fs.FS) ([]string, error) {
-	b, err := fs.ReadFile(fsys, "recipes/stacks.txt")
-	if err != nil {
-		return nil, err
-	}
-	return strings.Fields(string(b)), nil
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -20,16 +22,42 @@ func TestShippedContentIsClean(t *testing.T) {
 		t.Fatalf("%+v", problems)
 	}
 }
+
+// withTestPack caches the test pack (internal/content/testdata/pack, synthetic
+// recipes R1, R5, R6, R11 and R13) as an owned pack in a temp MUDA_HOME.
+func withTestPack(t *testing.T) {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("MUDA_HOME", home)
+	dir := filepath.Join(home, "data", "packs")
+	if err := os.CopyFS(filepath.Join(dir, "ci"), os.DirFS("../../internal/content/testdata/pack")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "packs.json"), []byte(`{"packs":[{"id":"ci","status":"owned","tree":"test"}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// With no pack cached, recipes says so and how to get one.
+func TestRecipesWithNoPackSaysHowToGetOne(t *testing.T) {
+	var out, errs bytes.Buffer
+	code := NewApp().Dispatch([]string{"recipes"}, &out, &errs)
+	if code != 1 || !strings.Contains(errs.String(), "no recipe packs are cached") || !strings.Contains(errs.String(), "muda packs sync") {
+		t.Fatalf("%d %s %s", code, out.String(), errs.String())
+	}
+}
+
 func TestRecipeCLIFilters(t *testing.T) {
+	withTestPack(t)
 	for _, tc := range []struct {
 		args []string
 		want string
 		code int
 	}{
-		{[]string{"recipes"}, "R10", 0}, {[]string{"recipes", "--signal", "slow-step", "--stack", "github-actions"}, "R11: A cache that never warms", 0}, {[]string{"recipes", "--waste", "W8"}, "R8", 0},
+		{[]string{"recipes"}, "R13", 0}, {[]string{"recipes", "--signal", "slow-step", "--stack", "github-actions"}, "R11: Fixture, a cache that warms", 0}, {[]string{"recipes", "--waste", "W3"}, "R6", 0},
 		{[]string{"recipes", "--signal", "emulation"}, "R6", 0}, {[]string{"recipes", "--stack", "node"}, "R1", 0},
 		{[]string{"recipe", "R1", "--stack", "docker"}, "### docker", 0},
-		{[]string{"recipe", "R11", "--stack", "go"}, "### go", 0}, {[]string{"recipe", "R2", "--stack", "go"}, "", 2},
+		{[]string{"recipe", "R11", "--stack", "go"}, "### go", 0}, {[]string{"recipe", "R13", "--stack", "go"}, "", 2},
 		{[]string{"recipe", "R1"}, "### node", 0}, {[]string{"standard", "W10"}, "Ignored advance notice", 0},
 		{[]string{"standard"}, "## Principles", 0}, {[]string{"recipes", "--waste", "W99"}, "", 2},
 		{[]string{"recipe", "R1", "--stack", "cdk"}, "", 2}, {[]string{"recipe", "R99"}, "", 2},
@@ -46,8 +74,9 @@ func TestRecipeCLIFilters(t *testing.T) {
 	}
 }
 
-// Release prep P3: the go stack selects exactly R1, R5, R6 and R11.
+// Release prep P3: the go stack selects exactly the recipes that declare it.
 func TestRecipesStackGo(t *testing.T) {
+	withTestPack(t)
 	var out, errs bytes.Buffer
 	if code := NewApp().Dispatch([]string{"recipes", "--stack", "go"}, &out, &errs); code != 0 {
 		t.Fatalf("exit %d: %s", code, errs.String())
@@ -94,6 +123,7 @@ func TestCommandCheckerPure(t *testing.T) {
 }
 
 func TestContentCLISelectionAndDeterminism(t *testing.T) {
+	withTestPack(t)
 	known, err := cli.CommandChecker(NewApp())
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +139,7 @@ func TestContentCLISelectionAndDeterminism(t *testing.T) {
 		if first.String() != second.String() {
 			t.Errorf("nondeterministic %v", args)
 		}
-		if args[0] == "recipes" && len(args) > 1 && first.String() != "R1: Pin the toolchain through version files\n" {
+		if args[0] == "recipes" && len(args) > 1 && first.String() != "R1: Fixture, one pin per tool\n" {
 			t.Errorf("filters: %s", first.String())
 		}
 		if args[0] == "recipe" {

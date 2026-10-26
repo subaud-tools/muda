@@ -21,44 +21,34 @@ type Problem struct {
 
 var recipeID = regexp.MustCompile(`^R[1-9][0-9]*$`)
 
-// Check checks metadata, sections, catalog references and literal sh examples.
+// Check checks muda's own content: the standard's catalog and candidates, and
+// the literal sh examples and project facts in the standard and the skills.
 // knownCommand must recognize arguments without executing a command.
 func Check(fsys fs.FS, knownCommand func(args []string) bool) []Problem {
 	var problems []Problem
 	add := func(p, msg string) { problems = append(problems, Problem{p, msg}) }
-	var catalog []string
 	if b, err := fs.ReadFile(fsys, "standard/standard.md"); err != nil {
 		add("standard/standard.md", fmt.Sprintf("read required standard: %v", err))
 	} else {
-		if catalog, err = wastes(string(b)); err != nil {
+		if _, err = wastes(string(b)); err != nil {
 			add("standard/standard.md", err.Error())
 		}
 		if _, err = candidates(string(b)); err != nil {
 			add("standard/standard.md", err.Error())
 		}
 	}
-	stacks, err := Stacks(fsys)
-	if err != nil {
-		add("recipes/stacks.txt", fmt.Sprintf("read stack catalog: %v", err))
-	}
-	rs, err := Recipes(fsys)
-	if err != nil {
-		add("recipes", err.Error())
-	}
-	for _, r := range rs {
-		checkRecipe(r, catalog, stacks, add)
-	}
-	// Walk original files too: malformed recipes must not hide bad commands or facts.
-	for _, dir := range []string{"standard", "recipes", "skills"} {
+	for _, dir := range []string{"standard", "skills"} {
 		checkFiles(fsys, dir, dir == "skills", knownCommand, add)
 	}
 	sortProblems(problems)
 	return problems
 }
 
-// CheckPack checks a pack folder as Check checks muda's own content: against
-// this muda's standard, signals and commands (knownCommand), and the pack's
-// own stacks and classes. Paths are relative to the pack folder.
+// CheckPack checks a pack folder: its recipes' metadata and sections against
+// this muda's standard, signals and commands (knownCommand) and the pack's
+// own stacks and classes, and every Markdown file it ships for examples and
+// project facts, read raw so a malformed recipe can't hide them. Paths are
+// relative to the pack folder.
 func CheckPack(base, pack fs.FS, knownCommand func([]string) bool) []Problem {
 	var problems []Problem
 	add := func(p, msg string) { problems = append(problems, Problem{p, msg}) }

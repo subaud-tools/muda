@@ -88,36 +88,22 @@ func TestLoadSkipsAPackOutsideItsMudaRange(t *testing.T) {
 	}
 }
 
-// shippedPack is a pack holding muda's R1 and the stacks it names, as the ci
-// pack does.
-func shippedPack(t *testing.T) fstest.MapFS {
-	t.Helper()
-	r1, err := fs.ReadFile(muda.Content, "recipes/R1.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return fstest.MapFS{
-		"pack.toml":     {Data: []byte("id = \"ci\"\nmuda = \">=0.3.0\"\nstacks = [\"github-actions\", \"docker\", \"python\", \"node\", \"go\"]\n")},
-		"recipes/R1.md": {Data: r1},
-	}
-}
-
 func knownAll([]string) bool { return true }
 
 func TestCheckPackPassesAValidPack(t *testing.T) {
-	if ps := content.CheckPack(muda.Content, shippedPack(t), knownAll); len(ps) != 0 {
+	if ps := content.CheckPack(muda.Content, testPack(t), knownAll); len(ps) != 0 {
 		t.Fatalf("%+v", ps)
 	}
 }
 
 func TestCheckPackJudgesStacksByThePacksOwnList(t *testing.T) {
-	f := shippedPack(t)
-	f["pack.toml"] = &fstest.MapFile{Data: []byte("id = \"ci\"\nmuda = \">=0.3.0\"\nstacks = [\"github-actions\", \"python\", \"node\", \"go\"]\n")}
+	f := testPack(t)
+	f["pack.toml"] = &fstest.MapFile{Data: []byte("id = \"ci\"\nmuda = \">=0.1.0\"\nstacks = [\"github-actions\", \"cdk\", \"python\", \"node\", \"go\"]\n")}
 	wantProblem(t, content.CheckPack(muda.Content, f, knownAll), "recipes/R1.md", "unknown stack: docker")
 }
 
 func TestCheckPackKnowsThePacksOwnClasses(t *testing.T) {
-	f := shippedPack(t)
+	f := testPack(t)
 	f["standard.md"] = &fstest.MapFile{Data: []byte("# ci\n\n## Catalog\n\n| Class | Waste |\n|---|---|\n| C1 | **Something** |\n")}
 	r1 := string(f["recipes/R1.md"].Data)
 	f["recipes/R1.md"] = &fstest.MapFile{Data: []byte(strings.Replace(r1, "waste: [W2]", "waste: [W2, C1, C2]", 1))}
@@ -131,13 +117,13 @@ func TestCheckPackKnowsThePacksOwnClasses(t *testing.T) {
 }
 
 func TestCheckPackFlagsAClassMudaOwns(t *testing.T) {
-	f := shippedPack(t)
+	f := testPack(t)
 	f["standard.md"] = &fstest.MapFile{Data: []byte("# ci\n\n## Catalog\n\n| Class | Waste |\n|---|---|\n| W4 | **Again** |\n")}
 	wantProblem(t, content.CheckPack(muda.Content, f, knownAll), "standard.md", "class W4 is muda's own")
 }
 
 func TestCheckPackFlagsAnUnknownCommandInItsSkill(t *testing.T) {
-	f := shippedPack(t)
+	f := testPack(t)
 	f["skill/SKILL.md"] = &fstest.MapFile{Data: []byte("---\nname: x\n---\n```sh\nmuda nonexistent\n```\n")}
 	ps := content.CheckPack(muda.Content, f, func(a []string) bool { return a[0] != "nonexistent" })
 	wantProblem(t, ps, "skill/SKILL.md", "unknown command: nonexistent")

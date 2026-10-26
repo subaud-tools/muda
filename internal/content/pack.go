@@ -122,17 +122,6 @@ func Load(base fs.FS, packs []fs.FS, version string) (Library, error) {
 	for _, w := range lib.Wastes {
 		classOwner[w] = "muda"
 	}
-	if _, err := fs.Stat(base, "recipes"); err == nil {
-		if lib.Stacks, err = Stacks(base); err != nil {
-			return lib, err
-		}
-		if lib.Recipes, err = Recipes(base); err != nil {
-			return lib, err
-		}
-		for _, r := range lib.Recipes {
-			recipeOwner[r.ID] = "muda"
-		}
-	}
 	var ps []Pack
 	for _, f := range packs {
 		p, err := ReadPack(f)

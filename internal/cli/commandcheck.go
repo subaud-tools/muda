@@ -171,7 +171,7 @@ func CommandChecker(app *tools.App) (func([]string) bool, error) {
 			return fs.NArg() == 0
 		// Family built-ins ignore extra arguments at run time; documentation
 		// examples must not rely on that.
-		case "version", "update", "man", "commands":
+		case "version", "update", "man", "commands", "login", "logout":
 			return fs.NArg() == 0
 		default:
 			return false // Registered metadata cannot prove an unknown argument contract.

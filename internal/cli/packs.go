@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/subaud-tools/muda/internal/content"
@@ -25,8 +27,8 @@ func parsePacks(args []string) (sync bool, err error) {
 	return false, usage("expected packs or packs sync")
 }
 
-// Packs lists the packs the account owned at the last sync and the version
-// cached, or syncs them with the access service.
+// Packs lists the packs the account owned at the last sync, the version cached
+// and its stacks, or syncs them with the access service.
 func Packs(env Env) tools.Command {
 	return tools.Command{
 		Name: "packs", Summary: "list or sync the recipe packs this account owns", Synopsis: "[sync]", Subcommands: []string{"sync"},
@@ -58,7 +60,12 @@ func Packs(env Env) tools.Command {
 				case e.Tree == "":
 					fmt.Fprintf(&b, "%s: owned, not cached; run `muda packs sync`\n", e.ID)
 				default:
-					fmt.Fprintf(&b, "%s: owned, cached %s\n", e.ID, e.Tree)
+					p, err := content.ReadPack(os.DirFS(filepath.Join(cache.Dir, e.ID)))
+					if err != nil {
+						fmt.Fprintf(&b, "%s: owned, cached %s, unreadable (%v); run `muda packs sync`\n", e.ID, e.Tree, err)
+						continue
+					}
+					fmt.Fprintf(&b, "%s: owned, cached %s; stacks %s\n", e.ID, e.Tree, strings.Join(p.Stacks, ", "))
 				}
 			}
 			fmt.Fprintf(&b, "Cache: %s (synced %s)\n", cache.Dir, s.Synced.Format("2006-01-02 15:04 MST"))
