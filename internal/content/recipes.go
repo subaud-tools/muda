@@ -19,6 +19,7 @@ type Recipe struct {
 	Waste         []string          `yaml:"waste"`
 	Signals       []string          `yaml:"signals"`
 	Stacks        []string          `yaml:"stacks"`
+	Pack          string            `yaml:"-"`
 	Body          string            `yaml:"-"`
 	Sections      map[string]string `yaml:"-"`
 	StackSections map[string]string `yaml:"-"`
@@ -33,14 +34,20 @@ func Recipes(fsys fs.FS) ([]Recipe, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read content: %w", err)
 	}
+	rs, err := readRecipes(fsys, entries)
+	if err == nil && len(rs) == 0 {
+		err = fmt.Errorf("empty recipe inventory")
+	}
+	return rs, err
+}
+
+// readRecipes parses the Markdown files among a recipes directory's entries.
+func readRecipes(fsys fs.FS, entries []fs.DirEntry) ([]Recipe, error) {
 	var paths []string
 	for _, entry := range entries {
 		if !entry.IsDir() && path.Ext(entry.Name()) == ".md" {
 			paths = append(paths, path.Join("recipes", entry.Name()))
 		}
-	}
-	if len(paths) == 0 {
-		return nil, fmt.Errorf("empty recipe inventory")
 	}
 	rs := make([]Recipe, 0, len(paths))
 	ids := map[string]bool{}
@@ -59,6 +66,12 @@ func Recipes(fsys fs.FS) ([]Recipe, error) {
 		ids[r.ID] = true
 		rs = append(rs, r)
 	}
+	sortRecipes(rs)
+	return rs, nil
+}
+
+// sortRecipes orders recipes by numeric ID.
+func sortRecipes(rs []Recipe) {
 	sort.Slice(rs, func(i, j int) bool {
 		a, _ := strconv.Atoi(strings.TrimPrefix(rs[i].ID, "R"))
 		b, _ := strconv.Atoi(strings.TrimPrefix(rs[j].ID, "R"))
@@ -67,7 +80,6 @@ func Recipes(fsys fs.FS) ([]Recipe, error) {
 		}
 		return a < b
 	})
-	return rs, nil
 }
 func parse(text string) (Recipe, error) {
 	r := Recipe{Sections: map[string]string{}, StackSections: map[string]string{}}

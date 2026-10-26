@@ -50,7 +50,7 @@ func KnownWaste(fsys fs.FS, w string) (bool, error) {
 }
 
 var (
-	catalogRow    = regexp.MustCompile(`^\| (W[1-9][0-9]*) \|`)
+	catalogRow    = regexp.MustCompile(`^\| ([A-Z][1-9][0-9]*) \|`)
 	candidateSlug = regexp.MustCompile("^- `([a-z0-9]+(?:-[a-z0-9]+)*)`")
 )
 
@@ -71,7 +71,8 @@ func section(text, heading string) ([]string, bool) {
 	return lines, found
 }
 
-// wastes reads the W-classes from the catalog table's rows.
+// wastes reads the classes (W1 in muda's standard, A1 in a pack's) from the
+// catalog table's rows.
 func wastes(text string) ([]string, error) {
 	lines, _ := section(text, "Catalog")
 	var ws []string
