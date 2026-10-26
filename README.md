@@ -62,7 +62,7 @@ muda measure --since 30d --format md   # where the time goes
 muda scan --format md                  # static workflow signals
 muda gates --format md                 # the gates a fix must keep
 muda notices --format md               # warnings you may have missed
-muda recipes                           # the fix library
+muda packs                             # the recipe packs this machine holds
 ```
 
 `muda commands --json` lists every command. `muda help <command>` explains one.
@@ -76,39 +76,36 @@ muda recipes                           # the fix library
 | `muda-diagnose` | Turns the baseline into findings with evidence, an order and any exemptions. |
 | `muda-fix` | Plans an approved finding's change, makes a branch and opens a pull request. |
 | `muda-verify` | Checks the effect and the gate result on the pull request, and again after merge. |
-| `muda-design` | On request, checks a planned pipeline or deploy change against the recipes before code is written. Its advice is expected, not measured. |
+| `muda-design` | On request, checks a planned pipeline or deploy change against the recipes in your packs before code is written. Its advice is expected, not measured. |
 
 ## Waste classes and recipes
 
-The standard names ten waste classes. Each recipe is a known fix for one or
-more of them, with stack-specific detail for GitHub Actions, CDK, Docker,
-Python, Node and Go.
+The standard names ten waste classes (W1 to W10). Read it with
+`muda standard` and `muda standard W4`.
 
-| Waste | What it looks like | Recipes |
-|---|---|---|
-| W1 No-op not a no-op | An unchanged deploy still updates stacks or builds images. | R2 Turn off framework version reporting; R3 Keep rotating secrets out of image asset hashes; R4 Isolate images that share a build context |
-| W2 Unpinned toolchain | Floating versions let the same tree build differently. | R1 Pin the toolchain through version files |
-| W3 Emulated builds | Images build under CPU emulation. | R6 Build once, outside deploy; promote by digest |
-| W4 Uncached work | Unchanged installs or layers are rebuilt. | R6; R11 A cache that never warms; R13 Key the dependency layer on third-party dependencies only |
-| W5 Serial where it could be parallel | Independent work runs in a line, or repeats itself. | R5 Find the duplicate before parallelizing tests; R12 Split a service rollout into phases before tuning it; R14 Deploy contracts first, then every stack at once |
-| W6 Re-verification | The same checks run twice on the same tree. | R10 Reuse proven checks without dropping deploy-specific gates |
-| W7 Chain stalls | An automated hand-off fails with no visible outcome. | R7 Automated hand-offs never stall silently |
-| W8 Silent runner-plane failure | Jobs queue because no runner can take them. | R8 Keep runners current and make a refused plane loud |
-| W9 Rebuilt artifact | The same inputs are built again in a later stage. | R6 |
-| W10 Ignored advance notice | Platform warnings go unread until jobs break. | R9 Read and act on advance notices |
+Recipes are known fixes for those classes, with stack-specific detail. muda
+carries none: they come in packs bought for your subaud.tools account, the ci
+pack for CI and build waste first. Sign the machine in and fetch the packs it
+owns:
 
-Read them with `muda standard`, `muda standard W4`, `muda recipes` and
-`muda recipe R11 --stack go`.
+```sh
+muda login
+muda packs sync
+```
+
+Then `muda recipes` lists them and `muda recipe ID --stack S` reads one.
+`muda packs` shows what is cached, and `muda pack check DIR` checks a pack
+folder. Without a pack, muda still measures, scans and records; a finding
+naming a recipe it can't read is recorded `unchecked`.
 
 ### Submitting a recipe
 
-Found a waste no recipe covers, or a fix or trap you measured? Open a
-[recipe submission](https://github.com/subaud-tools/muda/issues/new?template=recipe-submission.yml).
-The diagnose and verify skills offer to draft one for you, and post it only
-after you approve the text. Describe the pattern, never your project: no
-organisation, repository or service names, ids, URLs or pasted logs. Durations
-and ratios are what make it useful. Accepted submissions ship as recipes in the
-next release.
+Found a waste no recipe covers, or a fix or trap you measured? The diagnose
+and verify skills offer to draft a recipe submission, an issue on this
+repository, and post it only after you approve the text. Describe the
+pattern, never your project: no organisation, repository or service names,
+ids, URLs or pasted logs. Durations and ratios are what make it useful.
+Accepted submissions ship in a pack.
 
 ## How proof works
 

@@ -11,8 +11,8 @@ import (
 )
 
 // The record checks a finding against these lists, so they are pinned here:
-// a change to the standard's catalog, its candidate wastes or the recipes must
-// show up as a deliberate change to this test.
+// a change to the standard's catalog or its candidate wastes must show up as a
+// deliberate change to this test. muda carries no recipes; packs do.
 func TestShippedVocabulary(t *testing.T) {
 	v, err := content.ReadVocabulary(muda.Content)
 	if err != nil {
@@ -21,7 +21,6 @@ func TestShippedVocabulary(t *testing.T) {
 	want := content.Vocabulary{
 		Wastes:     []string{"W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10"},
 		Candidates: []string{"deploy-cancel", "build-context", "unscoped-post-deploy", "network-timeout", "artifact-lifecycle", "stale-automation-pr", "lingering-expand"},
-		Recipes:    []string{"R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R14"},
 	}
 	for name, pair := range map[string][2][]string{
 		"wastes": {v.Wastes, want.Wastes}, "candidates": {v.Candidates, want.Candidates}, "recipes": {v.Recipes, want.Recipes},
@@ -54,7 +53,8 @@ func TestCheckFlagsDuplicateCandidateSlug(t *testing.T) {
 }
 
 func TestCatalogComesFromTheStandard(t *testing.T) {
-	// R1 names W2; without W2's catalog row it names an unknown waste.
+	// The test pack's R1 names W2; without W2's catalog row in muda's
+	// standard it names an unknown waste.
 	f := standardWith(t, func(s string) string {
 		var keep []string
 		for _, line := range strings.Split(s, "\n") {
@@ -64,5 +64,5 @@ func TestCatalogComesFromTheStandard(t *testing.T) {
 		}
 		return strings.Join(keep, "\n")
 	})
-	wantProblem(t, content.Check(f, func([]string) bool { return true }), "recipes/R1.md", "unknown waste: W2")
+	wantProblem(t, content.CheckPack(f, testPack(t), func([]string) bool { return true }), "recipes/R1.md", "unknown waste: W2")
 }

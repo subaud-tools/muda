@@ -13,8 +13,8 @@ Before inspecting or changing delivery workflows:
    `dev` version only under the capability check below; tell the user a `dev`
    binary is an unversioned build. Run `muda commands --json` and confirm the
    delivery surface includes measure, scan, notices, gates, logs, compare,
-   recipes, recipe, standard, record and skills. A binary missing any of them
-   is incompatible. If missing,
+   packs, recipes, recipe, standard, record and skills. A binary missing any of
+   them is incompatible. If missing,
    give the exact install command
    `curl -fsSL https://muda.tools/install.sh | sh`. If old or incompatible,
    give `muda update`. **STOP** until a compatible binary is available; do not
@@ -30,6 +30,10 @@ Before inspecting or changing delivery workflows:
    permission) are not a probe failure: note them for muda-measure. A
    successful probe is not a confirmed representative baseline or gate
    inventory.
+3. Run `muda packs`. muda carries no recipes: they come in the packs it lists
+   as cached, each recipe from its pack. With none cached, tell the user
+   recipes need a pack (`muda login`, then `muda packs sync`); a finding
+   naming a recipe muda can't read is recorded `unchecked`.
 
 ## Rules
 
@@ -56,14 +60,15 @@ human agreed. A fix PR merges only after Phase 1 verify is shown.
 
 Take whatever the person brings: a design doc, a plan or a description in
 conversation. Read the repository as it is now to learn which stacks the
-design touches: `github-actions`, `cdk`, `docker`, `python`, `node` or `go`. It works the
+design touches, by the names `muda packs` lists for its packs. It works the
 same on a change already written: read the design and its code.
 
 ## Check it against the recipes
 
 1. List the recipes for each stack the design touches, e.g.
    `muda recipes --stack cdk` and `muda recipes --stack docker`.
-2. Read each one for that stack (`muda recipe R13 --stack docker`, …) and
+2. Read each one for that stack (`muda recipe R13 --stack docker` from the ci
+   pack, …) and
    check the design against its Symptom, its Fix, the stack's "After" shape
    and its Traps. Do not run Detect sections: they read runs and logs, and no
    runs or logs exist yet.

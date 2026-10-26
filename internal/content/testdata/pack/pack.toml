@@ -1,0 +1,5 @@
+# A test pack: synthetic recipes with the IDs, wastes, signals and stacks the
+# tests select on. It is not the ci pack, whose recipes are not public.
+id = "ci"
+muda = ">=0.1.0"
+stacks = ["github-actions", "cdk", "docker", "python", "node", "go"]

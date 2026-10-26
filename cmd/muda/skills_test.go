@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/subaud-tools/muda"
 	"github.com/subaud-tools/muda/internal/cli"
-	"github.com/subaud-tools/muda/internal/content"
 	"github.com/subaud-tools/muda/internal/skills"
 	tools "github.com/subaud-tools/tools-common"
 	"io"
@@ -80,8 +79,9 @@ func TestEntrySkillContract(t *testing.T) {
 	// "no PR in any state" check for a stale merged branch raised it to 1225;
 	// the public-text rule for recipe submissions to 1285; the muda-design
 	// route to 1300; the exempt -> fixed route (#29) to 1310.
-	if n := len(strings.Fields(text)); n > 1310 {
-		t.Errorf("muda is %d words; keep it at most 1310", n)
+	// Recipe packs (preflight step 3; recipes named with their pack) raised 1310 to 1360.
+	if n := len(strings.Fields(text)); n > 1360 {
+		t.Errorf("muda is %d words; keep it at most 1360", n)
 	}
 	// #29: an exempt finding whose waste was removed routes to verify.
 	if !strings.Contains(norm(text), norm("If a merged PR removed its waste, load muda-verify.")) {
@@ -355,18 +355,10 @@ func TestMeasureSkillContract(t *testing.T) {
 			t.Error("missing", s)
 		}
 	}
-	// P3 fix round 1, C1: the allowed stacks are exactly the shipped catalog,
-	// so a stack added to recipes/stacks.txt can be confirmed and recorded.
-	stacks, err := content.Stacks(muda.Content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	quoted := make([]string, len(stacks))
-	for i, s := range stacks {
-		quoted[i] = "`" + s + "`"
-	}
-	if allowed := "**Stacks:** only from " + strings.Join(quoted, ", ") + ";"; !strings.Contains(norm(text), norm(allowed)) {
-		t.Errorf("measure skill's stack list differs from the catalog; want %q", allowed)
+	// P3 fix round 1, C1, then recipe packs: the stack catalog moved into the
+	// packs, so the allowed stacks are the names muda packs lists.
+	if allowed := "**Stacks:** each confirmed stack, named as `muda packs` lists it when a pack does;"; !strings.Contains(norm(text), norm(allowed)) {
+		t.Errorf("measure skill's stack rule differs; want %q", allowed)
 	}
 	// T6 final review M1: the replay rule precedes the commands it changes.
 	if i, j := strings.Index(text, "**Replaying a closed window:**"), strings.Index(text, "muda measure --since 30d > muda-measure.json"); i < 0 || j < 0 || i > j {
@@ -375,8 +367,9 @@ func TestMeasureSkillContract(t *testing.T) {
 	// The guided-message and merging rules (feat/guided) raised 1000 to 1117.
 	// The record-branch handoff to muda-diagnose raised 1117 to 1146; the PR
 	// body scratch-file rule to 1160.
-	if n := len(strings.Fields(text)); n > 1160 {
-		t.Errorf("muda-measure is %d words; keep it at most 1160", n)
+	// Recipe packs (preflight step 3; recipes named with their pack) raised 1160 to 1215.
+	if n := len(strings.Fields(text)); n > 1215 {
+		t.Errorf("muda-measure is %d words; keep it at most 1215", n)
 	}
 	for _, s := range []string{"provisional", " settings.json", "`settings.json`", " gates.json", " measure.json", " scan.json",
 		"write-once", "no settings-update command", "unrecordable", "muda record gates set", "carry over", "relative `--since`"} {
@@ -554,8 +547,9 @@ func TestDiagnoseSkillContract(t *testing.T) {
 	}
 	// The image-build phase split (#12) raised 1620 to 1660; reporting a muda
 	// false alarm to 1690.
-	if n := len(strings.Fields(text)); n > 1690 {
-		t.Errorf("muda-diagnose is %d words; keep it at most 1690", n)
+	// Recipe packs (preflight step 3; recipes named with their pack) raised 1690 to 1750.
+	if n := len(strings.Fields(text)); n > 1750 {
+		t.Errorf("muda-diagnose is %d words; keep it at most 1750", n)
 	}
 	for _, s := range []string{"**Recipe submission:** for each waste reported unmatched, offer one",
 		"uncommitted scratch file (e.g. `.muda-submission.md`)", "following the entry skill's public-text rule",
@@ -625,8 +619,9 @@ func TestFixSkillContract(t *testing.T) {
 		t.Error("missing (#8):", "with an `Observe on:` line, that deploy")
 	}
 	// The Observe on rule (#8) raised 1240 to 1250.
-	if n := len(strings.Fields(text)); n > 1250 {
-		t.Errorf("muda-fix is %d words; keep it at most 1250", n)
+	// Recipe packs (preflight step 3; recipes named with their pack) raised 1250 to 1310.
+	if n := len(strings.Fields(text)); n > 1310 {
+		t.Errorf("muda-fix is %d words; keep it at most 1310", n)
 	}
 	// #13: proof sized to risk, cheap evidence first, a timebox.
 	for _, s := range []string{"the plan names one check, sized to the change's risk",
@@ -807,8 +802,9 @@ func TestVerifySkillContract(t *testing.T) {
 	// The missed-but-accepted outcome (#9) raised 1810 to 1875, and
 	// runner-label-only beside comments-only to 1880; the label-form caveat
 	// (#39 review) to 1895.
-	if n := len(strings.Fields(text)); n > 1895 {
-		t.Errorf("muda-verify is %d words; keep it at most 1895", n)
+	// Recipe packs (preflight step 3; recipes named with their pack) raised 1895 to 1945.
+	if n := len(strings.Fields(text)); n > 1945 {
+		t.Errorf("muda-verify is %d words; keep it at most 1945", n)
 	}
 	// #29: an exempt finding whose waste a merged PR removed is verified and fixed.
 	if !strings.Contains(norm(text), norm("or an `exempt` one whose waste a merged PR removed: verify that PR the same way, then patch `fixed` with its `pr`")) {
@@ -859,17 +855,9 @@ func TestDesignSkillContract(t *testing.T) {
 		t.Fatal(e)
 	}
 	text := string(b)
-	// The stack names come from the catalog; the skill's copy is pinned to it.
-	stacks, err := content.Stacks(muda.Content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	quoted := make([]string, len(stacks))
-	for i, st := range stacks {
-		quoted[i] = "`" + st + "`"
-	}
-	if list := "which stacks the design touches: " + strings.Join(quoted[:len(quoted)-1], ", ") + " or " + quoted[len(quoted)-1] + "."; !strings.Contains(norm(text), norm(list)) {
-		t.Errorf("design skill's stack list differs from the catalog; want %q", list)
+	// The stack names come from the packs, read through muda packs.
+	if list := "which stacks the design touches, by the names `muda packs` lists for its packs."; !strings.Contains(norm(text), norm(list)) {
+		t.Errorf("design skill's stack rule differs; want %q", list)
 	}
 	if preflight(t, text) != preflight(t, string(entry)) {
 		t.Error("preflight must be the entry skill's text verbatim")
@@ -893,8 +881,9 @@ func TestDesignSkillContract(t *testing.T) {
 		}
 	}
 	// 697 words at its first release.
-	if n := len(strings.Fields(text)); n > 700 {
-		t.Errorf("muda-design is %d words; keep it at most 700", n)
+	// Recipe packs (preflight step 3; recipes named with their pack) raised 700 to 755.
+	if n := len(strings.Fields(text)); n > 755 {
+		t.Errorf("muda-design is %d words; keep it at most 755", n)
 	}
 	// The entry skill routes a design request here, before any record state.
 	e2 := norm(string(entry))

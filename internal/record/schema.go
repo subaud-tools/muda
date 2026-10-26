@@ -53,6 +53,9 @@ type Finding struct {
 	// ReopenReason is set only by fixed -> reopened: the human's word that
 	// the finding's PR did not merge. Older findings have none.
 	ReopenReason string `json:"reopen-reason,omitempty" toml:"reopen-reason,omitempty"`
+	// Unchecked marks a finding whose recipe or class is in a pack this
+	// muda didn't hold when it was written. Record sets it; input can't.
+	Unchecked bool `json:"unchecked,omitempty" toml:"unchecked,omitempty"`
 }
 
 // Pointer fields distinguish an omitted patch from an explicit empty value.

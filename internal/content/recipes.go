@@ -1,4 +1,4 @@
-// Package content reads and validates the embedded delivery-waste library.
+// Package content reads and validates muda's standard and recipe packs.
 package content
 
 import (
@@ -19,6 +19,7 @@ type Recipe struct {
 	Waste         []string          `yaml:"waste"`
 	Signals       []string          `yaml:"signals"`
 	Stacks        []string          `yaml:"stacks"`
+	Pack          string            `yaml:"-"`
 	Body          string            `yaml:"-"`
 	Sections      map[string]string `yaml:"-"`
 	StackSections map[string]string `yaml:"-"`
@@ -26,21 +27,15 @@ type Recipe struct {
 
 var SectionNames = []string{"Symptom", "Detect", "Fix", "Stacks", "Traps", "Verify", "Evidence"}
 
-// Recipes parses recipes in numeric ID order. Malformed metadata is an error;
-// missing or unknown sections are reported by Check, not hidden by parsing.
-func Recipes(fsys fs.FS) ([]Recipe, error) {
-	entries, err := fs.ReadDir(fsys, "recipes")
-	if err != nil {
-		return nil, fmt.Errorf("read content: %w", err)
-	}
+// readRecipes parses the Markdown files among a recipes directory's entries,
+// in numeric ID order. Malformed metadata is an error; missing or unknown
+// sections are reported by CheckPack, not hidden by parsing.
+func readRecipes(fsys fs.FS, entries []fs.DirEntry) ([]Recipe, error) {
 	var paths []string
 	for _, entry := range entries {
 		if !entry.IsDir() && path.Ext(entry.Name()) == ".md" {
 			paths = append(paths, path.Join("recipes", entry.Name()))
 		}
-	}
-	if len(paths) == 0 {
-		return nil, fmt.Errorf("empty recipe inventory")
 	}
 	rs := make([]Recipe, 0, len(paths))
 	ids := map[string]bool{}
@@ -59,6 +54,12 @@ func Recipes(fsys fs.FS) ([]Recipe, error) {
 		ids[r.ID] = true
 		rs = append(rs, r)
 	}
+	sortRecipes(rs)
+	return rs, nil
+}
+
+// sortRecipes orders recipes by numeric ID.
+func sortRecipes(rs []Recipe) {
 	sort.Slice(rs, func(i, j int) bool {
 		a, _ := strconv.Atoi(strings.TrimPrefix(rs[i].ID, "R"))
 		b, _ := strconv.Atoi(strings.TrimPrefix(rs[j].ID, "R"))
@@ -67,7 +68,6 @@ func Recipes(fsys fs.FS) ([]Recipe, error) {
 		}
 		return a < b
 	})
-	return rs, nil
 }
 func parse(text string) (Recipe, error) {
 	r := Recipe{Sections: map[string]string{}, StackSections: map[string]string{}}
@@ -130,13 +130,4 @@ func parse(text string) (Recipe, error) {
 		}
 	}
 	return r, nil
-}
-
-// Stacks reads the shipped stack catalog.
-func Stacks(fsys fs.FS) ([]string, error) {
-	b, err := fs.ReadFile(fsys, "recipes/stacks.txt")
-	if err != nil {
-		return nil, err
-	}
-	return strings.Fields(string(b)), nil
 }

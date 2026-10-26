@@ -38,6 +38,8 @@ unpadded, comma-free, unique; invalid-record-pr). Older records have none.
 Finding add: waste, location, recipe, evidence[] (signal.Evidence),
 basis=measured|suspected, estimate, risk; pr (required once in-pr or fixed).
 IDs are generated and status starts open. set accepts any of these fields plus status, exemption-id.
+A recipe ID, or a class outside W1-W10, that no cached pack holds is recorded
+with unchecked = true; a later set of waste or recipe checks it again.
 Transitions: open -> approved -> in-pr -> fixed|reopened; reopened -> approved;
 approved -> reopened (a failed experiment);
 fixed -> reopened only with reopen-reason (set takes it with that transition

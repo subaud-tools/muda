@@ -13,8 +13,8 @@ Before inspecting or changing delivery workflows:
    `dev` version only under the capability check below; tell the user a `dev`
    binary is an unversioned build. Run `muda commands --json` and confirm the
    delivery surface includes measure, scan, notices, gates, logs, compare,
-   recipes, recipe, standard, record and skills. A binary missing any of them
-   is incompatible. If missing,
+   packs, recipes, recipe, standard, record and skills. A binary missing any of
+   them is incompatible. If missing,
    give the exact install command
    `curl -fsSL https://muda.tools/install.sh | sh`. If old or incompatible,
    give `muda update`. **STOP** until a compatible binary is available; do not
@@ -30,6 +30,10 @@ Before inspecting or changing delivery workflows:
    permission) are not a probe failure: note them for muda-measure. A
    successful probe is not a confirmed representative baseline or gate
    inventory.
+3. Run `muda packs`. muda carries no recipes: they come in the packs it lists
+   as cached, each recipe from its pack. With none cached, tell the user
+   recipes need a pack (`muda login`, then `muda packs sync`); a finding
+   naming a recipe muda can't read is recorded `unchecked`.
 
 ## Rules
 
@@ -85,8 +89,8 @@ narrowed, and say from what to what. Report that window, never the full period.
 
 1. **Roles:** each workflow's candidate `role` and `role_reason`, keyed by
    workflow `path`.
-2. **Stacks:** only from `github-actions`, `cdk`, `docker`, `python`, `node`, `go`;
-   anything else is unrecorded.
+2. **Stacks:** each confirmed stack, named as `muda packs` lists it when a
+   pack does; anything unconfirmed is unrecorded.
 3. **Window:** `since`, `until`, runs and `confidence` per workflow, outages,
    freezes, and each `definition_history` change (first run, runs before and
    after, jobs added or removed); an `unavailable` history cannot rule one out;
