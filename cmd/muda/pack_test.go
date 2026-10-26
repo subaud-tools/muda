@@ -49,3 +49,25 @@ func TestPackCheckReportsEachProblem(t *testing.T) {
 		t.Errorf("want %q in %s", want, out.String())
 	}
 }
+
+// Two packs that each pass alone but claim the same recipe id would break
+// every buyer who owns both, so checking them together must fail.
+func TestPackCheckRefusesPacksThatCollide(t *testing.T) {
+	stacks := `"github-actions", "docker", "python", "node", "go"`
+	ci := writePack(t, stacks)
+	other := filepath.Join(filepath.Dir(writePack(t, stacks)), "aws")
+	if err := os.Rename(filepath.Join(filepath.Dir(other), "ci"), other); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(other, "pack.toml"), []byte("id = \"aws\"\nmuda = \">=0.1.0\"\nstacks = ["+stacks+"]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errs bytes.Buffer
+	code := NewApp().Dispatch([]string{"pack", "check", ci, other}, &out, &errs)
+	if code != 1 {
+		t.Fatalf("exit %d: %s %s", code, out.String(), errs.String())
+	}
+	if !strings.Contains(out.String()+errs.String(), "R1") {
+		t.Errorf("the collision should name R1: %s %s", out.String(), errs.String())
+	}
+}
