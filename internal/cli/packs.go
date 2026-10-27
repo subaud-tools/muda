@@ -47,7 +47,7 @@ func Packs(env Env) tools.Command {
 				return err
 			}
 			if len(s.Packs) == 0 {
-				_, err = fmt.Fprintln(out, "No packs synced yet: sign this machine in with `muda login`, then run `muda packs sync`.")
+				_, err = fmt.Fprintln(out, "No packs synced yet: sign this machine in with `muda login --wait`, then run `muda packs sync`.")
 				return err
 			}
 			var b strings.Builder
@@ -82,7 +82,7 @@ func Packs(env Env) tools.Command {
 func syncPacks(env Env, cache packs.Cache, out io.Writer) error {
 	token, err := auth.Token()
 	if errors.Is(err, auth.ErrNotSignedIn) {
-		return tools.Exitf(1, "this machine is not signed in to subaud.tools").WithHint("run `muda login`, then `muda packs sync`")
+		return tools.Exitf(1, "this machine is not signed in to subaud.tools").WithHint("run `muda login --wait`, then `muda packs sync`")
 	}
 	if err != nil {
 		return err
@@ -142,7 +142,7 @@ func noRecipes(what string) error {
 	}
 	switch {
 	case len(s.Packs) == 0:
-		return usage(what + "; no packs synced yet: run `muda login`, then `muda packs sync`")
+		return usage(what + "; no packs synced yet: run `muda login --wait`, then `muda packs sync`")
 	case len(notOwned) == 0:
 		return usage(what + "; no pack this account owns has it")
 	}

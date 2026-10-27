@@ -93,9 +93,8 @@ a real regression.
 `VERSION` is the release knob. Merging to `main` with a new `VERSION` releases
 it: `release.yml` builds, signs, notarizes and publishes to GitHub and to
 `muda.tools/dl`. A pull request into `main` must raise `VERSION`, or carry the
-`no-release` label, or `version-guard` fails it. Keep
-`.claude-plugin/plugin.json` at the same version (a test checks this), and add
-an entry to `CHANGELOG.md`.
+`no-release` label, or `version-guard` fails it. Add an entry to
+`CHANGELOG.md`.
 
 ## Pull requests
 

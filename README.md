@@ -36,14 +36,13 @@ muda skills install --agent claude --scope user
 Agents are `claude`, `pi` and `codex`. Scopes are `user` (the default) and
 `project` (the Git root of the current repository).
 
-You can also get the skills from this repository:
+Claude Code has no muda plugin: `muda skills install --agent claude` installs
+the same skills.
 
-- **Claude Code plugin:** `/plugin marketplace add subaud-tools/muda`, then
-  `/plugin install muda@muda`.
-- **pi package:** `pi install git:github.com/subaud-tools/muda`.
-
-A plugin or package brings the skills, not the binary. Install the binary
-first. Each skill checks for a compatible muda before it starts.
+You can also get the skills for pi from this repository as a package:
+`pi install git:github.com/subaud-tools/muda`. The package brings the skills,
+not the binary. Install the binary first. Each skill checks for a compatible
+muda before it starts.
 
 ## Quickstart
 
@@ -89,9 +88,13 @@ pack for CI and build waste first. Sign the machine in and fetch the packs it
 owns:
 
 ```sh
-muda login
+muda login --wait
 muda packs sync
 ```
+
+`muda login --wait` prints a code to type on the account page and waits
+until the machine is allowed. Without `--wait`, `muda login` prints the code
+and exits; run it again once the machine is allowed to save the sign-in.
 
 Then `muda recipes` lists them and `muda recipe ID --stack S` reads one.
 `muda packs` shows what is cached, and `muda pack check DIR` checks a pack

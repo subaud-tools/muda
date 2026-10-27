@@ -54,7 +54,7 @@ func Recipes() tools.Command {
 				return tools.Exitf(1, "the cached packs (%s) hold no recipes yet", strings.Join(ids, ", ")).WithHint("run `muda packs sync` for new recipes; more packs are sold at " + packs.AccountPage)
 			}
 			if len(lib.Recipes) == 0 {
-				return tools.Exitf(1, "no recipe packs are cached").WithHint("sign this machine in with `muda login`, then run `muda packs sync`; packs are sold at " + packs.AccountPage)
+				return tools.Exitf(1, "no recipe packs are cached").WithHint("sign this machine in with `muda login --wait`, then run `muda packs sync`; packs are sold at " + packs.AccountPage)
 			}
 			if w != "" && !slices.Contains(lib.Wastes, w) {
 				return usage("unknown waste: " + w)

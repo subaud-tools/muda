@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- The skills-only Claude Code plugin and muda's marketplace are gone: `muda skills install` installs the same skills for Claude Code, Codex and pi.
+- `muda login` signs in over two short runs (tools-common v0.30.0): the first prints the code to type, the next saves the sign-in once the machine is allowed. `muda login --wait` does both in one run, and the hints that send you to sign in now name it.
+
 ## 0.4.1
 
 - `muda recipes` with only packs that hold no recipes yet (the aws pack today) names those packs instead of saying no packs are cached.
