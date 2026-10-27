@@ -18,23 +18,6 @@ import (
 	"testing/fstest"
 )
 
-func TestPluginVersionMatchesVERSION(t *testing.T) {
-	b, e := os.ReadFile("../../VERSION")
-	if e != nil {
-		t.Fatal(e)
-	}
-	var p struct{ Name, Version, License, Repository string }
-	b2, e := os.ReadFile("../../.claude-plugin/plugin.json")
-	if e != nil {
-		t.Fatal(e)
-	}
-	if e = json.Unmarshal(b2, &p); e != nil {
-		t.Fatal(e)
-	}
-	if p.Name != "muda" || p.Version != strings.TrimSpace(string(b)) || p.License != "MIT" || p.Repository != "https://github.com/subaud-tools/muda" {
-		t.Fatal(p)
-	}
-}
 func TestEntrySkillContract(t *testing.T) {
 	b, e := muda.Content.ReadFile("skills/muda/SKILL.md")
 	if e != nil {
@@ -210,20 +193,14 @@ func TestFullSkillFixtureUsesRealChecker(t *testing.T) {
 	}
 }
 
-// The plugin and package routes ship the skills/ directory. pi has no manifest
-// here: with no package.json it discovers the conventional skills/ directory,
-// so a package.json appearing is a deliberate change to that route.
+// The pi package route ships the skills/ directory. pi has no manifest here:
+// with no package.json it discovers the conventional skills/ directory, so a
+// package.json appearing is a deliberate change to that route. There is no
+// Claude Code plugin: `muda skills install --agent claude` installs the same
+// skills from the binary.
 func TestPackageManifests(t *testing.T) {
-	var p struct{ Skills string }
-	b, e := os.ReadFile("../../.claude-plugin/plugin.json")
-	if e != nil {
-		t.Fatal(e)
-	}
-	if e = json.Unmarshal(b, &p); e != nil {
-		t.Fatal(e)
-	}
-	if p.Skills != "./skills/" {
-		t.Fatal(p)
+	if _, e := os.Stat("../../.claude-plugin"); !errors.Is(e, fs.ErrNotExist) {
+		t.Fatal(".claude-plugin is back; Claude Code gets the skills from muda skills install:", e)
 	}
 	if _, e := os.Stat("../../package.json"); !errors.Is(e, fs.ErrNotExist) {
 		t.Fatal("package.json would replace pi's conventional skills/ discovery:", e)
@@ -232,19 +209,6 @@ func TestPackageManifests(t *testing.T) {
 		if _, e := os.Stat("../../skills/" + n + "/SKILL.md"); e != nil {
 			t.Fatal(e)
 		}
-	}
-	var m struct {
-		Plugins []struct{ Name, Source string }
-	}
-	b, e = os.ReadFile("../../.claude-plugin/marketplace.json")
-	if e != nil {
-		t.Fatal(e)
-	}
-	if e = json.Unmarshal(b, &m); e != nil {
-		t.Fatal(e)
-	}
-	if len(m.Plugins) != 1 || m.Plugins[0].Name != "muda" || m.Plugins[0].Source != "./" {
-		t.Fatal(m)
 	}
 }
 
@@ -900,30 +864,30 @@ func TestReadmeSkillsStatus(t *testing.T) {
 		t.Fatal(e)
 	}
 	text := norm(string(b))
-	for _, stale := range []string{"Phase A is partial", "only the entry skill", "not yet clean", "private development", "private and unreleased", "copier", "muda check"} {
+	for _, stale := range []string{"Phase A is partial", "only the entry skill", "not yet clean", "private development", "private and unreleased", "copier", "muda check", "/plugin marketplace add subaud-tools/muda"} {
 		if strings.Contains(text, stale) {
 			t.Error("stale README text:", stale)
 		}
 	}
 	for _, want := range []string{"## The six skills", "`muda`", "`muda-measure`", "`muda-diagnose`", "`muda-fix`", "`muda-verify`", "`muda-design`",
-		"curl -fsSL https://muda.tools/install.sh | sh", "muda update", "muda skills install", "/plugin marketplace add subaud-tools/muda", "pi install git:github.com/subaud-tools/muda", "not the binary"} {
+		"curl -fsSL https://muda.tools/install.sh | sh", "muda update", "muda skills install", "muda skills install --agent claude", "pi install git:github.com/subaud-tools/muda", "not the binary"} {
 		if !strings.Contains(text, norm(want)) {
 			t.Error("README missing:", want)
 		}
 	}
 	// Final review M2: the skills directory README ships in the binary and
-	// the plugin/package route, so it must describe what ships.
+	// the pi package route, so it must describe what ships.
 	b, e = muda.Content.ReadFile("skills/README.md")
 	if e != nil {
 		t.Fatal(e)
 	}
 	text = norm(string(b))
-	for _, stale := range []string{"planned for Task 8", "No skills or installer", "shipped yet"} {
+	for _, stale := range []string{"planned for Task 8", "No skills or installer", "shipped yet", "Claude Code plugin"} {
 		if strings.Contains(text, stale) {
 			t.Error("stale skills/README.md text:", stale)
 		}
 	}
-	for _, want := range []string{"six skills", "`muda`", "`muda-measure`", "`muda-diagnose`", "`muda-fix`", "`muda-verify`", "`muda-design`", "embedded in the muda binary", "muda skills install", "Claude Code plugin", "pi package", "not the binary"} {
+	for _, want := range []string{"six skills", "`muda`", "`muda-measure`", "`muda-diagnose`", "`muda-fix`", "`muda-verify`", "`muda-design`", "embedded in the muda binary", "muda skills install", "pi package", "not the binary"} {
 		if !strings.Contains(text, norm(want)) {
 			t.Error("skills/README.md missing:", want)
 		}
