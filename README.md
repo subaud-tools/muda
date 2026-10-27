@@ -88,9 +88,13 @@ pack for CI and build waste first. Sign the machine in and fetch the packs it
 owns:
 
 ```sh
-muda login
+muda login --wait
 muda packs sync
 ```
+
+`muda login --wait` prints a code to type on the account page and waits
+until the machine is allowed. Without `--wait`, `muda login` prints the code
+and exits; run it again once the machine is allowed to save the sign-in.
 
 Then `muda recipes` lists them and `muda recipe ID --stack S` reads one.
 `muda packs` shows what is cached, and `muda pack check DIR` checks a pack

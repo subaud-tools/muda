@@ -2,7 +2,7 @@ module github.com/subaud-tools/muda
 
 go 1.26.4
 
-require github.com/subaud-tools/tools-common v0.26.0
+require github.com/subaud-tools/tools-common v0.30.0
 
 require gopkg.in/yaml.v3 v3.0.1
 

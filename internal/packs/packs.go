@@ -164,7 +164,7 @@ func (c Cache) Sync(ctx context.Context, api string, client *http.Client, token 
 		}
 		_ = json.Unmarshal(b, &e)
 		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, fmt.Errorf("the access service answered %d %s: sign this machine in with `muda login`", resp.StatusCode, e.Error)
+			return nil, fmt.Errorf("the access service answered %d %s: sign this machine in with `muda login --wait`", resp.StatusCode, e.Error)
 		}
 		return nil, fmt.Errorf("the access service answered %d %s", resp.StatusCode, e.Error)
 	}
