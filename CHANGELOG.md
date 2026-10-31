@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- muda has a local page. A project is a set of repositories (or accounts) you pick on the page; New project lists the repositories under a folder you name and whether each already has a muda record. Each project shows its jobs, their stages, and the cards the agent posted, with their evidence, its recommendation and your answer, in the family's three columns with a thread per card. Your answers and notes are drafts until Send, which takes them to the agent together.
+- `muda serve`, `muda channel`, `muda watch` and `muda report` run the page and its channel, on tools-common 0.45.0. The channel gives the agent `muda_open`, `muda_post`, `muda_reply` and `muda_status`. `muda_post` refuses a finding with no evidence or no measured or suspected basis.
+- The page writes no record: decisions are still recorded by the agent through `muda record`. The skills don't post to the page yet.
+
 ## 0.5.0
 
 - The skills-only Claude Code plugin and muda's marketplace are gone: `muda skills install` installs the same skills for Claude Code, Codex and pi.

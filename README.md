@@ -66,6 +66,10 @@ muda packs                             # the recipe packs this machine holds
 
 `muda commands --json` lists every command. `muda help <command>` explains one.
 
+## The page
+
+`muda serve` opens muda's local page. On it you group repositories into a project, see what the agent found in each with its evidence, and answer there; Send takes your answers to the agent, which records them in `.muda/`. The page reaches an agent session through muda's channel: the muda plugin in Claude Code, or channels.tools in pi.
+
 ## The six skills
 
 | Skill | What it does |

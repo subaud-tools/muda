@@ -48,4 +48,48 @@ jobs:
           sudo install -m 0755 actionlint /usr/local/bin/actionlint
           rm -f actionlint.tar.gz actionlint
           actionlint -version
+      # The page (internal/web) is TypeScript: verify-extra runs its gate and the
+      # committed-bundle freshness check.
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: internal/web/package-lock.json
+      # setup-node's `cache: npm` caches the download cache, not node_modules.
+      # Keyed on the lockfile: a hit lets `_web-deps` skip `npm ci`.
+      - name: Cache web node_modules
+        uses: actions/cache@v6
+        with:
+          path: internal/web/node_modules
+          key: web-node-modules-${{ runner.os }}-${{ hashFiles('internal/web/package-lock.json') }}
       - run: just verify-extra
+
+  # The page in a real headless chromium (`just verify-slow`): too slow for the
+  # push gate, so its own job.
+  probe:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@v4.0.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: internal/web/package-lock.json
+      - name: Cache web node_modules
+        uses: actions/cache@v6
+        with:
+          path: internal/web/node_modules
+          key: web-node-modules-${{ runner.os }}-${{ hashFiles('internal/web/package-lock.json') }}
+      - name: Install web dependencies
+        working-directory: internal/web
+        run: "[ -d node_modules ] || npm ci"
+      # playwright-core's own CLI (the version that launches), and the headless
+      # shell, which is what chromium.launch() actually runs.
+      - name: Install chromium
+        working-directory: internal/web
+        run: node node_modules/playwright-core/cli.js install --with-deps chromium chromium-headless-shell
+      - run: just verify-slow
