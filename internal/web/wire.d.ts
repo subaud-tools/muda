@@ -93,6 +93,7 @@ export interface Card {
   stage: string;
   id: string;
   title: string;
+  kind: string;
   class: string;
   basis: string;
   evidence: Evidence[] | null;

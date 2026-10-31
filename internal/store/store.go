@@ -64,6 +64,7 @@ CREATE TABLE cards (
   stage          TEXT NOT NULL,
   id             TEXT NOT NULL,
   title          TEXT NOT NULL,
+  kind           TEXT NOT NULL DEFAULT '',
   class          TEXT NOT NULL DEFAULT '',
   basis          TEXT NOT NULL DEFAULT '',
   evidence       TEXT NOT NULL DEFAULT '[]',
@@ -173,11 +174,14 @@ type Answers struct {
 // and id name it within its project. Decided is what the user already decided
 // on it, as the agent recorded it.
 type Card struct {
-	Job            string     `json:"job"`
-	Group          string     `json:"group"`
-	Stage          string     `json:"stage"`
-	ID             string     `json:"id"`
-	Title          string     `json:"title"`
+	Job   string `json:"job"`
+	Group string `json:"group"`
+	Stage string `json:"stage"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	// Kind is what the card is: finding, baseline, plan, verdict, call, later
+	// or step. Class is a finding's waste class, such as W3.
+	Kind           string     `json:"kind"`
 	Class          string     `json:"class"`
 	Basis          string     `json:"basis"`
 	Evidence       []Evidence `json:"evidence"`
@@ -436,7 +440,7 @@ func (s *Store) Jobs(ctx context.Context, project int64) ([]Job, error) {
 
 // Cards lists a project's cards in the order they were first posted.
 func (s *Store) Cards(ctx context.Context, project int64) ([]Card, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT job, grp, stage, id, title, class, basis, evidence, decided, recommendation, answers, revision, posted_at, thread_id
+	rows, err := s.DB.QueryContext(ctx, `SELECT job, grp, stage, id, title, kind, class, basis, evidence, decided, recommendation, answers, revision, posted_at, thread_id
 		FROM cards WHERE project = ? ORDER BY uid`, project)
 	if err != nil {
 		return nil, err
@@ -446,7 +450,7 @@ func (s *Store) Cards(ctx context.Context, project int64) ([]Card, error) {
 		var c Card
 		var evidence, answers string
 		var at int64
-		if err := rows.Scan(&c.Job, &c.Group, &c.Stage, &c.ID, &c.Title, &c.Class, &c.Basis, &evidence, &c.Decided, &c.Recommendation, &answers, &c.Revision, &at, &c.Thread); err != nil {
+		if err := rows.Scan(&c.Job, &c.Group, &c.Stage, &c.ID, &c.Title, &c.Kind, &c.Class, &c.Basis, &evidence, &c.Decided, &c.Recommendation, &answers, &c.Revision, &at, &c.Thread); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -571,14 +575,14 @@ func (s *Store) postCard(ctx context.Context, tx *sql.Tx, project int64, c Card,
 		}
 		answers = string(b)
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO cards(project, job, grp, stage, id, title, class, basis, evidence, decided, recommendation, answers, revision, posted_at, thread_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(project, job, grp, id) DO UPDATE SET stage = excluded.stage, title = excluded.title, class = excluded.class, basis = excluded.basis,
+	_, err = tx.ExecContext(ctx, `INSERT INTO cards(project, job, grp, stage, id, title, kind, class, basis, evidence, decided, recommendation, answers, revision, posted_at, thread_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(project, job, grp, id) DO UPDATE SET stage = excluded.stage, title = excluded.title, kind = excluded.kind, class = excluded.class, basis = excluded.basis,
 			evidence = excluded.evidence, decided = excluded.decided, recommendation = excluded.recommendation, answers = excluded.answers,
 			revision = excluded.revision, posted_at = excluded.posted_at
-		WHERE (stage, title, class, basis, evidence, decided, recommendation, answers, revision) IS NOT
-			(excluded.stage, excluded.title, excluded.class, excluded.basis, excluded.evidence, excluded.decided, excluded.recommendation, excluded.answers, excluded.revision)`,
-		project, c.Job, c.Group, c.Stage, c.ID, c.Title, c.Class, c.Basis, string(evidence), c.Decided, c.Recommendation, answers, c.Revision, now, th.ID)
+		WHERE (stage, title, kind, class, basis, evidence, decided, recommendation, answers, revision) IS NOT
+			(excluded.stage, excluded.title, excluded.kind, excluded.class, excluded.basis, excluded.evidence, excluded.decided, excluded.recommendation, excluded.answers, excluded.revision)`,
+		project, c.Job, c.Group, c.Stage, c.ID, c.Title, c.Kind, c.Class, c.Basis, string(evidence), c.Decided, c.Recommendation, answers, c.Revision, now, th.ID)
 	return err
 }
 

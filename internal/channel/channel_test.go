@@ -82,7 +82,7 @@ func cardArgs(project int64, card string) string {
 }
 
 func finding(extra string) string {
-	return `{"job":"deploy","group":"/w/a","stage":"find","id":"F1","title":"Full clones","class":"finding"` + extra + `}`
+	return `{"job":"deploy","group":"/w/a","stage":"find","id":"F1","title":"Full clones","kind":"finding","class":"W3"` + extra + `}`
 }
 
 func TestPostRefusals(t *testing.T) {
@@ -96,7 +96,7 @@ func TestPostRefusals(t *testing.T) {
 		{"a finding with another basis", finding(`,"basis":"probable","evidence":` + goodEvidence), []string{`"F1"`, "basis"}},
 		{"evidence naming nothing", finding(`,"basis":"suspected","evidence":[{"kind":"run","ref":"run 1"},{"kind":"run","ref":" ","text":"read it"}]`), []string{`"F1"`, "evidence[1]"}},
 		{"evidence of another kind", finding(`,"basis":"suspected","evidence":[{"kind":"hunch","ref":"x"}]`), []string{`"F1"`, "evidence[0]"}},
-		{"evidence on another card names nothing", `{"job":"deploy","group":"/w/a","stage":"find","id":"P1","title":"Plan","class":"plan","evidence":[{"text":"read it"}]}`, []string{`"P1"`, "evidence[0]"}},
+		{"evidence on another card names nothing", `{"job":"deploy","group":"/w/a","stage":"find","id":"P1","title":"Plan","kind":"plan","evidence":[{"text":"read it"}]}`, []string{`"P1"`, "evidence[0]"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newRig(t)
@@ -122,7 +122,7 @@ func TestPostTakesWellFormedCards(t *testing.T) {
 	id := r.project("s1")
 	r.must("s1", "muda_post", cardArgs(id, finding(`,"basis":"measured","evidence":`+goodEvidence)))
 	// A card that is no finding needs neither: a plan to approve.
-	r.must("s1", "muda_post", cardArgs(id, `{"job":"deploy","group":"/w/a","stage":"find","id":"P1","title":"Plan","class":"plan"}`))
+	r.must("s1", "muda_post", cardArgs(id, `{"job":"deploy","group":"/w/a","stage":"find","id":"P1","title":"Plan","kind":"plan"}`))
 	cards, err := r.st.Cards(context.Background(), id)
 	if err != nil || len(cards) != 2 {
 		t.Fatalf("%+v %v", cards, err)
@@ -139,9 +139,9 @@ func TestAnswersAreOneOfFourKinds(t *testing.T) {
 		`{"kind":"order","rows":[{"id":"F1","label":"First"},{"id":"F2","label":"Second"}]}`,
 		`{"kind":"fields","fields":[{"id":"reason","label":"Reason"},{"id":"review","label":"Review date","type":"date"}]}`,
 	} {
-		r.must("s1", "muda_post", cardArgs(id, `{"job":"deploy","group":"/w/a","stage":"find","id":"A","title":"Pick","class":"plan","answers":`+a+`}`))
+		r.must("s1", "muda_post", cardArgs(id, `{"job":"deploy","group":"/w/a","stage":"find","id":"A","title":"Pick","kind":"plan","answers":`+a+`}`))
 	}
-	_, err := r.call("s1", "muda_post", cardArgs(id, `{"job":"deploy","group":"/w/a","stage":"find","id":"B","title":"Pick","class":"plan","answers":{"kind":"slider"}}`))
+	_, err := r.call("s1", "muda_post", cardArgs(id, `{"job":"deploy","group":"/w/a","stage":"find","id":"B","title":"Pick","kind":"plan","answers":{"kind":"slider"}}`))
 	if err == nil || !strings.Contains(err.Error(), `"B"`) || !strings.Contains(err.Error(), "answers") {
 		t.Fatalf("a fifth kind: %v", err)
 	}
@@ -298,5 +298,15 @@ func TestInstructionsKeepTheRecordsOwnPath(t *testing.T) {
 		if !names[n] {
 			t.Errorf("no tool %s", n)
 		}
+	}
+}
+
+// A finding is marked by its kind; its class is the waste class, so a card
+// whose class is a waste class but whose kind is finding is still checked.
+func TestFindingIsMarkedByKindNotClass(t *testing.T) {
+	r := newRig(t)
+	id := r.project("s1")
+	if _, err := r.call("s1", "muda_post", cardArgs(id, `{"job":"deploy","group":"/w/a","stage":"find","id":"F2","title":"Cold cache","kind":"finding","class":"W4","basis":"measured"}`)); err == nil {
+		t.Fatal("a finding of class W4 with no evidence was taken")
 	}
 }

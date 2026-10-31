@@ -64,7 +64,7 @@ func (r *rig) seeded() int64 {
 	err = r.st.Post(ctx, p.ID, store.Posted{
 		Jobs: []store.Job{{ID: "deploy", Label: "Deployments", Stages: []store.Stage{
 			{ID: "base", Label: "Baseline", State: "done"}, {ID: "find", Label: "Findings", State: "now", Count: "1 of 2"}}}},
-		Cards: []store.Card{{Job: "deploy", Group: "/w/a", Stage: "find", ID: "F1", Title: "Full clones", Class: "finding", Basis: "measured",
+		Cards: []store.Card{{Job: "deploy", Group: "/w/a", Stage: "find", ID: "F1", Title: "Full clones", Kind: "finding", Class: "W3", Basis: "measured",
 			Evidence: []store.Evidence{{Kind: "run", Ref: "run 1", Text: "90 s"}},
 			Answers:  &store.Answers{Kind: "buttons", Options: []store.Option{{ID: "ok", Label: "Approve"}}}}},
 	}, "s1")

@@ -15,7 +15,7 @@ import (
 // Instructions are the standing guidance the agent gets with the channel.
 const Instructions = `muda's page is where the user reviews a project: a named set of groups (repositories or accounts), each job's stages, and the cards you post for them. Every review decision is made on the page, not in chat.
 - muda_open creates a project by title with its groups, or opens one, and makes this session its owner; any later session may open it and take over, bringing the user's unanswered messages with it.
-- muda_post posts or revises jobs, stages, groups and cards in one transaction. Give every card a title. Set class "finding" on every finding: a finding needs at least one evidence entry and a basis of measured or suspected, and each evidence entry names its run, job, file, resource or bill line. Post what the record or tool printed; never restate a gate result in your own words.
+- muda_post posts or revises jobs, stages, groups and cards in one transaction. Give every card a title. Set kind "finding" on every finding, and its waste class in class: a finding needs at least one evidence entry and a basis of measured or suspected, and each evidence entry names its run, job, file, resource or bill line. Post what the record or tool printed; never restate a gate result in your own words.
 - A card's answers are one of four kinds: buttons (options), rows (a choice per row), order (rows to drag into order) or fields. You supply the words and the page knows only the kinds.
 - The user's choices and notes reach you together when they press Send, as an event from muda: <channel source="muda" project="…" send_id="…"> in pi, or a turn whose first line is muda event project=… send_id=… in Claude Code. On a Send that takes more than a moment, first call muda_reply with its send id, state working and one line on what you are doing. Settle every Send: answered, declined or failed, with why.
 - The page writes to no record. Record decisions only through the record CLI or the record's pull requests, never in muda's page; then post again after every record write, so the page shows what the record now says.
@@ -39,7 +39,7 @@ const cardSchema = `{"type":"object","properties":{` +
 	`"job":{"type":"string"},"group":{"type":"string","description":"a group's key"},"stage":{"type":"string"},` +
 	`"id":{"type":"string","description":"with job and group, names the card: post it again to revise it"},` +
 	`"title":{"type":"string"},` +
-	`"class":{"type":"string","description":"what the card is: finding, baseline, plan, verdict, call, later, step"},` +
+	`"kind":{"type":"string","description":"what the card is: finding, baseline, plan, verdict, call, later, step"},"class":{"type":"string","description":"a finding's waste class, such as W3"},` +
 	`"basis":{"type":"string","enum":["measured","suspected"],"description":"required on a finding"},` +
 	`"evidence":{"type":"array","description":"what you read; at least one entry on a finding","items":{"type":"object","properties":{` +
 	`"kind":{"type":"string","enum":["run","job","file","resource","bill_line"]},` +

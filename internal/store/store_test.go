@@ -65,7 +65,7 @@ func post(t *testing.T, st *Store, id int64, c ...Card) {
 	}
 }
 
-var finding = Card{Job: "deploy", Group: "/w/a", Stage: "find", ID: "F1", Title: "Full clones", Class: "finding", Basis: "measured",
+var finding = Card{Job: "deploy", Group: "/w/a", Stage: "find", ID: "F1", Title: "Full clones", Kind: "finding", Class: "W3", Basis: "measured",
 	Evidence:       []Evidence{{Kind: "run", Ref: "run 123", Text: "checkout took 90 s", URL: "https://example.com/run/123"}},
 	Recommendation: "Clone shallow.",
 	Answers:        &Answers{Kind: "buttons", Options: []Option{{ID: "ok", Label: "Approve"}}}}

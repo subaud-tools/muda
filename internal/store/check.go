@@ -25,7 +25,7 @@ func checkCard(c Card) error {
 	if strings.TrimSpace(c.ID) == "" || strings.TrimSpace(c.Title) == "" {
 		return cardRefused(c, "id and title", "a card needs both")
 	}
-	if strings.EqualFold(strings.TrimSpace(c.Class), "finding") {
+	if c.Kind == "finding" {
 		if len(c.Evidence) == 0 {
 			return cardRefused(c, "evidence", "a finding needs at least one evidence entry")
 		}
