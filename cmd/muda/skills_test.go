@@ -162,7 +162,7 @@ func TestSkillsActualApp(t *testing.T) {
 	if _, e := os.Stat(filepath.Join(sub, ".pi")); !os.IsNotExist(e) {
 		t.Fatal("ambient cwd used")
 	}
-	for _, a := range [][]string{{"skills", "install", "--agent", "invalid"}, {"skills", "install", "--scope", "invalid"}, {"skills", "install", "extra"}} {
+	for _, a := range [][]string{{"skills", "install", "--agent", "invalid"}, {"skills", "install", "--agent", "codex"}, {"skills", "install", "--scope", "invalid"}, {"skills", "install", "extra"}} {
 		if c := app.Dispatch(a, &out, &err); c != 2 {
 			t.Fatalf("%v code=%d", a, c)
 		}
@@ -454,9 +454,9 @@ func TestDiagnoseSkillContract(t *testing.T) {
 		// carry several wastes.
 		"read every recipe it lists", "run each one's Detect section or note why it does not apply",
 		"One sink can carry several wastes",
-		// Stage 1 follow-up T1: the checkpoint reports every listed recipe's
+		// Stage 1 follow-up T1: the checkpoint's cards carry every listed recipe's
 		// outcome, so a second waste on an explained sink is never dropped.
-		"For each sink or signal", "the report lists every recipe step 1 listed", "one outcome each",
+		"For each sink or signal", "its card's evidence lists every recipe step 1 listed", "one outcome each",
 		"`measured`, `suspected` or `not shown`, with the evidence read", "or `does not apply`, with the reason",
 		"An empty outcome is not allowed", "even once another recipe explains the sink",
 		// T1 fix round 1: `not shown` needs a Detect that ran (I-2); the record
@@ -864,7 +864,7 @@ func TestReadmeSkillsStatus(t *testing.T) {
 		t.Fatal(e)
 	}
 	text := norm(string(b))
-	for _, stale := range []string{"Phase A is partial", "only the entry skill", "not yet clean", "private development", "private and unreleased", "copier", "muda check", "/plugin marketplace add subaud-tools/muda"} {
+	for _, stale := range []string{"Phase A is partial", "only the entry skill", "not yet clean", "private development", "private and unreleased", "copier", "muda check", "/plugin marketplace add subaud-tools/muda", "codex"} {
 		if strings.Contains(text, stale) {
 			t.Error("stale README text:", stale)
 		}
@@ -882,7 +882,7 @@ func TestReadmeSkillsStatus(t *testing.T) {
 		t.Fatal(e)
 	}
 	text = norm(string(b))
-	for _, stale := range []string{"planned for Task 8", "No skills or installer", "shipped yet", "Claude Code plugin"} {
+	for _, stale := range []string{"planned for Task 8", "No skills or installer", "shipped yet", "Claude Code plugin", "codex"} {
 		if strings.Contains(text, stale) {
 			t.Error("stale skills/README.md text:", stale)
 		}
@@ -1081,7 +1081,15 @@ func TestUnmergedFixedReopenRoute(t *testing.T) {
 
 // Court's live-run direction: every stop for the human ends with one concrete
 // "Your move" ask, and the agent may offer to merge, never bypassing a gate.
-// Both rules close every skill's Rules section, byte-identical in all six.
+// mergingRule closes every skill's Rules section, byte-identical in all six.
+const mergingRule = `**Merging:** only on an explicit yes to that PR, every required check green on
+the reported head: ` + "`gh pr merge N --squash --match-head-commit SHA`" + `. No admin
+bypass, removed check, or gate-passing label unless a ` + "`record-pr`" + ` label or the
+human agreed. A fix PR merges only after Phase 1 verify is shown.
+`
+
+// guidedRules is what a skill still in chat ends its Rules with. Skills on the
+// page carry the page rule in place of its Messages rule.
 const guidedRules = `**Messages:** recommend, never survey: decide every answer (order, labels,
 approval). One line per checkpoint item: what, basis, key number,
 recommendation; full evidence and every recipe outcome go to a named,
@@ -1090,10 +1098,16 @@ bullets; no open "go ahead?". End with one ask: "**Your move:** reply 'yes' or
 name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
 (link) once green, or merge and reply 'merged'".
 
-**Merging:** only on an explicit yes to that PR, every required check green on
-the reported head: ` + "`gh pr merge N --squash --match-head-commit SHA`" + `. No admin
-bypass, removed check, or gate-passing label unless a ` + "`record-pr`" + ` label or the
-human agreed. A fix PR merges only after Phase 1 verify is shown.
+` + mergingRule
+
+// onPage lists the skills whose checkpoints are posted to muda's page.
+var onPage = map[string]bool{"muda": true, "muda-measure": true, "muda-diagnose": true, "muda-fix": true, "muda-verify": true}
+
+// pagePointer is the shared page line of every loop skill but the entry skill,
+// which holds the full rule.
+const pagePointer = `**Page:** entry skill's page rule. At each checkpoint ` + "`muda_post`" + ` cards, each
+recommending one answer with its basis and key number; wait for Send,
+` + "`muda_reply`" + `, record, ` + "`muda_post`" + ` again. Never ask in chat what a card asks.
 `
 
 func rulesSection(t *testing.T, text string) string {
@@ -1118,8 +1132,14 @@ func TestGuidedMessageAndMergeRules(t *testing.T) {
 		}
 		text := string(b)
 		rules := rulesSection(t, text)
-		if !strings.HasSuffix(rules, "\n\n"+guidedRules+"\n") {
-			t.Errorf("%s: Rules must end with the shared guided and merging rules, verbatim", n)
+		want := guidedRules
+		if n == "muda" {
+			want = mergingRule
+		} else if onPage[n] {
+			want = pagePointer + "\n" + mergingRule
+		}
+		if !strings.HasSuffix(rules, "\n\n"+want+"\n") {
+			t.Errorf("%s: Rules must end with the shared rules, verbatim", n)
 		}
 		if k := strings.Index(rules, "**Messages:**"); k >= 0 {
 			if first == "" {
@@ -1128,7 +1148,11 @@ func TestGuidedMessageAndMergeRules(t *testing.T) {
 				t.Errorf("%s: the shared rules differ from the entry skill's copy", n)
 			}
 		}
-		if strings.Count(text, "**Messages:**") != 1 || strings.Count(text, "**Merging:**") != 1 {
+		messages := 1
+		if onPage[n] {
+			messages = 0
+		}
+		if strings.Count(text, "**Messages:**") != messages || strings.Count(text, "**Merging:**") != 1 {
 			t.Errorf("%s: the shared rules must appear exactly once", n)
 		}
 		if strings.Contains(preflight(t, text), "Your move") {
@@ -1175,6 +1199,63 @@ func TestGuidedMessageAndMergeRules(t *testing.T) {
 	b, _ := muda.Content.ReadFile("skills/muda/SKILL.md")
 	if !strings.Contains(norm(string(b)), "never route on unmerged state") {
 		t.Error("muda lost: never route on unmerged state")
+	}
+}
+
+// Plan 3: the loop's checkpoints are posted to muda's page and decided by Send.
+// The entry skill holds the page rule; the record is still written only by the
+// record CLI, and starting a record and recipe submission text stay in chat.
+func TestEntryPageRule(t *testing.T) {
+	b, e := muda.Content.ReadFile("skills/muda/SKILL.md")
+	if e != nil {
+		t.Fatal(e)
+	}
+	text := norm(string(b))
+	rule := norm(rulesSection(t, string(b)))
+	for _, s := range []string{"**Page:**", "`muda_status` must answer", "**STOP** and give the install step", "the muda plugin (Claude Code)", "channels.tools (pi)",
+		"`muda_open` the project (user's title, repositories as groups", "`muda_post`", "job `deployments`", "`baseline`, `findings`, `fix-plan`, `verify`",
+		"kind, class, basis, evidence, recommendation, answers", "one chat line", "wait for Send", "`muda_reply`", "record through the record CLI",
+		"`muda_post` again with what the record says", "Never ask in chat what a card asks", "a STOP's question is a `call` card",
+		"The Your move merge ask", "Merge and Not yet", "Starting a record and recipe submission text stay in chat"} {
+		if !strings.Contains(rule, norm(s)) {
+			t.Error("page rule missing", s)
+		}
+	}
+	for _, s := range []string{"scratch report", ".muda-diagnose.md", "reply 'merged'"} {
+		if strings.Contains(text, s) {
+			t.Error("stale", s)
+		}
+	}
+}
+
+// Each loop skill names the cards its checkpoint posts; none keeps a scratch report.
+func TestSkillCheckpointCards(t *testing.T) {
+	for n, want := range map[string][]string{
+		"muda-measure": {"card of kind `baseline`", "evidence from measure, gates and scan", "gate gaps stay evidence",
+			"answers of kind `rows`", "a role per workflow, defaulting to the candidate", "answers of kind `fields`, for stacks and window",
+			"reconfirm, re-posting the card"},
+		"muda-diagnose": {"cards of kind `finding`", "`class` its W class", "`basis` `measured` or `suspected`", "`buttons` Approve, Exempt and Later",
+			"answers `order`", "answers `fields` (reason, review-by, agreed-by)", "`buttons` Renew and Reopen", "stage `findings`", "A sink with no candidate"},
+		"muda-fix": {"card of kind `plan`", "stage `fix-plan`", "`buttons` Approve and Needs changes",
+			"the ready PR as a `step` card with no answers", "muda-verify's Phase 1 adds Merge and Not yet"},
+		"muda-verify": {"card of kind `verdict`", "stage `verify`", "the compare output word for word in its evidence", "`buttons` Fixed, Reopened and Stays in PR",
+			"The merge ask adds Merge and Not yet to the ready PR's `step` card"},
+	} {
+		b, e := muda.Content.ReadFile("skills/" + n + "/SKILL.md")
+		if e != nil {
+			t.Fatal(e)
+		}
+		text := norm(string(b))
+		for _, s := range want {
+			if !strings.Contains(text, norm(s)) {
+				t.Errorf("%s missing %q", n, s)
+			}
+		}
+		for _, s := range []string{"scratch report", ".muda-diagnose.md"} {
+			if strings.Contains(text, s) {
+				t.Errorf("%s: stale %q", n, s)
+			}
+		}
 	}
 }
 
@@ -1261,5 +1342,18 @@ func TestPRBodyViaScratchFile(t *testing.T) {
 				t.Errorf("%s: stale PR body form %q", n, stale)
 			}
 		}
+	}
+}
+
+// The page keeps the old Messages rule's core: every card recommends one
+// The page keeps the old Messages rule's core: every card recommends one
+// answer, with its key number.
+func TestPageRuleRecommends(t *testing.T) {
+	b, err := muda.Content.ReadFile("skills/muda/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(norm(string(b)), "recommend one answer per card, with its key number") {
+		t.Error("the entry skill's page rule must have every card recommend one answer")
 	}
 }

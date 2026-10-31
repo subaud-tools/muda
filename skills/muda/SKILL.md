@@ -44,20 +44,23 @@ hand-edit `.muda/`. Normal reads do not edit code or workflows;
 agent-guided fixes need human approval and a PR. Skill installation is a separate,
 explicitly requested write.
 
-**Public text:** anything posted outside the user's repository (a recipe
-submission, an issue) describes the pattern, never the project: no
+**Public text:** anything posted outside the user's repository
+describes the pattern, never the project: no
 organisation, repository, service or team names, run or job ids, URLs, account
-ids, tracker numbers or log-line content. Keep durations and ratios (for
-example "13.5 min to 6 min on a 4-CPU runner"). Show the user the exact text;
-post only on their yes.
+ids, tracker numbers or log-line content. Keep durations and ratios. Show the
+user the exact text; post only on their yes.
 
-**Messages:** recommend, never survey: decide every answer (order, labels,
-approval). One line per checkpoint item: what, basis, key number,
-recommendation; full evidence and every recipe outcome go to a named,
-uncommitted scratch report (e.g. `.muda-diagnose.md`). At most three status
-bullets; no open "go ahead?". End with one ask: "**Your move:** reply 'yes' or
-name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
-(link) once green, or merge and reply 'merged'".
+**Page:** checkpoints are decided on muda's page. `muda_status` must answer,
+else **STOP** and give the install step: the muda plugin (Claude Code) or
+channels.tools (pi). `muda_open` the project (user's title, repositories as
+groups); `muda_post` job `deployments`, stages `baseline`, `findings`,
+`fix-plan`, `verify`, and cards (kind, class, basis, evidence, recommendation,
+answers): recommend one answer per card, with its key number. Say in one chat
+line it waits; wait for Send. Settle it with `muda_reply`, record through the
+record CLI, `muda_post` again with what the record says. Never ask in chat what
+a card asks; a STOP's question is a `call` card. The Your move merge ask: a
+`step` card, Merge and Not yet. Starting a record and recipe submission text
+stay in chat.
 
 **Merging:** only on an explicit yes to that PR, every required check green on
 the reported head: `gh pr merge N --squash --match-head-commit SHA`. No admin
@@ -75,7 +78,7 @@ or merged) is muda-measure's handoff: switch to it and load muda-diagnose,
 which reads the record there. More than one such branch: STOP and ask. It is
 the only unmerged state routed.
 
-If `.muda/` exists, run these local reads before resuming:
+If `.muda/` exists, run these local reads:
 
 ```sh
 muda record check
@@ -84,9 +87,7 @@ muda record show --format json
 
 Stop on invalid/newer schema; ask for review, never repair by hand. If either
 reports `incomplete-baseline-set`, **STOP**: tell the human to re-run the exact
-same `record baseline` command, or do what the reported problem says. Summarize
-what the record and cited evidence establish: open findings and any fix
-awaiting verification. Raise every exemption an exempt
+same `record baseline` command, or do what the reported problem says. Summarize open findings and any fix awaiting verification, citing evidence. Raise every exemption an exempt
 finding still relies on whose `review-by` is past today (UTC); replaced ones
 are history. A workflow
 gate exemption covers the exact file; ones recorded before raw-file hashes must
@@ -97,14 +98,13 @@ If no `.muda/` exists:
 
 **CHECKPOINT:** Your move: 'yes' to initialize a reviewed local record and start
 measurement. Wait for the answer. Prepare muda-settings.json from confirmed information
-only: one JSON object with `schema: 1`, `roles` (workflow-to-confirmed-role map),
-`stacks` (confirmed stack list), `window` (`since` and `until` dates/RFC3339),
-and `muda-version`: the exact first version token `muda version` prints
-after muda (e.g. `dev`, `0.2.0`). `muda record init` happens
+only: `schema: 1`, `roles`,
+`stacks`, `window` (`since` and `until` dates/RFC3339),
+and `muda-version`: the first version token `muda version` prints
+after muda. `muda record init` happens
 only after roles, stacks and window are confirmed; later settings change only
 through a re-recorded baseline. If not yet confirmed, load muda-measure, which confirms
-them, then runs init; this entry consent carries over. If already confirmed,
-use only:
+them, then runs init; this entry consent carries over. Otherwise:
 
 ```sh
 muda record init --file muda-settings.json
@@ -129,8 +129,7 @@ Choose the next phase from the validated record, not time pressure:
 | All findings fixed or validly exempt, the recorded baseline window's `until` is later than every fixed finding's PR merge time (`gh pr view <pr> --json mergedAt`, compared as full timestamps), and no exemption `date` is after `until`'s UTC date (the same day counts as not later) | A new cycle's baseline is recorded, not yet diagnosed: load muda-diagnose. If a merge time can't be read, **STOP** and ask. |
 | All findings fixed or validly exempt, otherwise | Stopping rule: report the program complete, citing each finding's receipt, then load muda-measure for the next cycle's baseline. |
 
-For mixed states, report each and recommend which eligible finding to take
-next. Before routing, check for an unmerged record PR
+Mixed states: report each and recommend the next eligible finding. Before routing, check for an unmerged record PR
 (`gh pr list --json headRefName`, filtered by the `muda/record` prefix); if one
 exists, give the Your move merge ask: never route on
 unmerged state. A fixed finding's PR with null `mergedAt` is unmerged:

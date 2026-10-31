@@ -48,13 +48,9 @@ minutes of agent work per finding, and no single command over 10 minutes: poll,
 never block. Past either, stop and report what is known; never invent a new
 experiment. Every subagent brief carries this timebox.
 
-**Messages:** recommend, never survey: decide every answer (order, labels,
-approval). One line per checkpoint item: what, basis, key number,
-recommendation; full evidence and every recipe outcome go to a named,
-uncommitted scratch report (e.g. `.muda-diagnose.md`). At most three status
-bullets; no open "go ahead?". End with one ask: "**Your move:** reply 'yes' or
-name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
-(link) once green, or merge and reply 'merged'".
+**Page:** entry skill's page rule. At each checkpoint `muda_post` cards, each
+recommending one answer with its basis and key number; wait for Send,
+`muda_reply`, record, `muda_post` again. Never ask in chat what a card asks.
 
 **Merging:** only on an explicit yes to that PR, every required check green on
 the reported head: `gh pr merge N --squash --match-head-commit SHA`. No admin
@@ -108,7 +104,7 @@ exit 2 is usage. Before claiming an effect, check `before_unavailable`,
 `after_unavailable` and deltas with `presence: "unavailable"`: a missing
 before side is not an improvement. Report the measured effect against the
 finding's estimate, and the gate and scan results (read as in Phase 2), before
-the merge ask. A PR that edits a workflow reads `UNVERIFIED`
+the merge ask. The merge ask adds Merge and Not yet to the ready PR's `step` card. A PR that edits a workflow reads `UNVERIFIED`
 before merge (the file's hash changed). Only changed workflow files need an
 exemption; a file changed only on the base branch is identical on both sides. If the human accepts a changed file, read its `workflow_diffs`
 entry, then agree an exact `gate:` exemption for that hash through
@@ -178,9 +174,10 @@ finding's cited location changed as the recipe says: a removed
 human. A scan comparison `unavailable` means **STOP** and ask the human, never
 "nothing added" or "removed".
 
-**CHECKPOINT:** Present the measured effect (before, after, change, runs
-cited), the jobs confirmed run and their work, gate lists and status, and
-signal lists.
+**CHECKPOINT:** Post a card of kind `verdict`, stage `verify`: the measured
+effect (before, after, change, runs cited), the jobs confirmed run and their
+work, gate lists and status, and signal lists, the compare output word for word
+in its evidence, answers `buttons` Fixed, Reopened and Stays in PR.
 Your move: confirm them and decide `fixed`, `reopened`, or that it stays `in-pr`
 with a receipt saying why (an exempt one stays `exempt`). Wait for an explicit answer. Time pressure changes none
 of this.

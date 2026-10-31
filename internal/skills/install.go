@@ -19,8 +19,6 @@ func Target(agent, scope, home, projectRoot string) (string, string, error) {
 		rel = ".claude/skills"
 	case "pi":
 		rel = ".pi/agent/skills"
-	case "codex":
-		rel = ".codex/skills"
 	default:
 		return "", "", fmt.Errorf("unsupported agent: %s", agent)
 	}
@@ -31,9 +29,6 @@ func Target(agent, scope, home, projectRoot string) (string, string, error) {
 		base = projectRoot
 		if agent == "pi" {
 			rel = ".pi/skills"
-		}
-		if agent == "codex" {
-			rel = ".agents/skills"
 		}
 	default:
 		return "", "", fmt.Errorf("unsupported scope: %s", scope)

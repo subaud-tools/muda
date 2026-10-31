@@ -33,11 +33,14 @@ The skills come with the binary. Install them for your agent:
 muda skills install --agent claude --scope user
 ```
 
-Agents are `claude`, `pi` and `codex`. Scopes are `user` (the default) and
+Agents are `claude` and `pi`. Scopes are `user` (the default) and
 `project` (the Git root of the current repository).
 
-Claude Code has no muda plugin: `muda skills install --agent claude` installs
-the same skills.
+The skills ask you their questions on muda's page (see [The page](#the-page)),
+which reaches the session through the muda plugin in Claude Code
+(`/plugin install muda@subaud-tools` from the subaud-tools marketplace,
+`subaud-tools/plugins`) or the muda channel in pi (channels.tools). The plugin
+brings the channel, not the skills.
 
 You can also get the skills for pi from this repository as a package:
 `pi install git:github.com/subaud-tools/muda`. The package brings the skills,

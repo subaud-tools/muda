@@ -20,7 +20,7 @@ func fixture() fstest.MapFS {
 	return f
 }
 func TestInstallTargets(t *testing.T) {
-	for _, row := range []struct{ agent, scope, rel string }{{"claude", "user", ".claude/skills"}, {"claude", "project", ".claude/skills"}, {"pi", "user", ".pi/agent/skills"}, {"pi", "project", ".pi/skills"}, {"codex", "user", ".codex/skills"}, {"codex", "project", ".agents/skills"}} {
+	for _, row := range []struct{ agent, scope, rel string }{{"claude", "user", ".claude/skills"}, {"claude", "project", ".claude/skills"}, {"pi", "user", ".pi/agent/skills"}, {"pi", "project", ".pi/skills"}} {
 		t.Run(row.agent+row.scope, func(t *testing.T) {
 			home, root := t.TempDir(), t.TempDir()
 			if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
@@ -475,5 +475,12 @@ func TestInstallRefusesRootSymlinkToFile(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(file); string(b) != "not a directory" {
 		t.Fatal("file changed")
+	}
+}
+
+func TestCodexIsNotATarget(t *testing.T) {
+	home := t.TempDir()
+	if _, _, err := skills.Target("codex", "user", home, ""); err == nil {
+		t.Fatal("codex accepted")
 	}
 }

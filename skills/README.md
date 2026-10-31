@@ -9,7 +9,7 @@ are embedded in the muda binary, which installs them explicitly:
 muda skills install --agent claude --scope user
 ```
 
-Agents are `claude`, `pi` or `codex`; scopes are `user` or `project`.
+Agents are `claude` or `pi`; scopes are `user` or `project`.
 
 They also ship through the pi package route. The package supplies the skills,
 not the binary. Each skill's preflight checks for a compatible muda binary

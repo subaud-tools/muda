@@ -14,9 +14,9 @@ import (
 
 func skillsFlags() *flag.FlagSet {
 	f := flag.NewFlagSet("skills", flag.ContinueOnError)
-	f.String("agent", "claude", "claude, pi or codex")
+	f.String("agent", "claude", "claude or pi")
 	f.String("scope", "user", "user or project")
-	tools.SetUsage(f, "muda skills install [--agent claude|pi|codex] [--scope user|project]", "Install bundled, muda-owned skills. No GitHub authentication or network. Existing foreign files and symlinks are refused. This explicit install is an exception to the normal .muda-only record write boundary.")
+	tools.SetUsage(f, "muda skills install [--agent claude|pi] [--scope user|project]", "Install bundled, muda-owned skills. No GitHub authentication or network. Existing foreign files and symlinks are refused. This explicit install is an exception to the normal .muda-only record write boundary.")
 	return f
 }
 
@@ -30,13 +30,13 @@ func parseSkills(args []string, out io.Writer) (string, string, error) {
 		return "", "", e
 	}
 	a, s := f.Lookup("agent").Value.String(), f.Lookup("scope").Value.String()
-	if f.NArg() != 0 || (a != "claude" && a != "pi" && a != "codex") || (s != "user" && s != "project") {
-		return "", "", tools.UsageError{Msg: "expected --agent claude|pi|codex and --scope user|project; no positional arguments"}
+	if f.NArg() != 0 || (a != "claude" && a != "pi") || (s != "user" && s != "project") {
+		return "", "", tools.UsageError{Msg: "expected --agent claude|pi and --scope user|project; no positional arguments"}
 	}
 	return a, s, nil
 }
 func Skills() tools.Command {
-	return tools.Command{Name: "skills", Summary: "install bundled agent skills", Synopsis: "install [--agent claude|pi|codex] [--scope user|project]", NewFlags: skillsFlags, Run: func(args []string, out, _ io.Writer) error {
+	return tools.Command{Name: "skills", Summary: "install bundled agent skills", Synopsis: "install [--agent claude|pi] [--scope user|project]", NewFlags: skillsFlags, Run: func(args []string, out, _ io.Writer) error {
 		if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
 			return tools.ParseFlags(skillsFlags(), args, out)
 		}

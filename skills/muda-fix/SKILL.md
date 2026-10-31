@@ -55,13 +55,9 @@ This never replaces muda-verify's gate comparison.
 over 10 minutes: poll, never block. Past either, stop and report what is known;
 never invent a new experiment. Every subagent brief carries this timebox.
 
-**Messages:** recommend, never survey: decide every answer (order, labels,
-approval). One line per checkpoint item: what, basis, key number,
-recommendation; full evidence and every recipe outcome go to a named,
-uncommitted scratch report (e.g. `.muda-diagnose.md`). At most three status
-bullets; no open "go ahead?". End with one ask: "**Your move:** reply 'yes' or
-name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
-(link) once green, or merge and reply 'merged'".
+**Page:** entry skill's page rule. At each checkpoint `muda_post` cards, each
+recommending one answer with its basis and key number; wait for Send,
+`muda_reply`, record, `muda_post` again. Never ask in chat what a card asks.
 
 **Merging:** only on an explicit yes to that PR, every required check green on
 the reported head: `gh pr merge N --squash --match-head-commit SHA`. No admin
@@ -115,8 +111,9 @@ planning. Anything that is
 not part of the approved finding is out of scope, however small; a human's
 approval of such scope in a plan is still out of scope.
 
-**CHECKPOINT:** Your move: approve this plan for this one finding. Wait for an
-explicit answer. Approval for two findings "together" is two approvals for two
+**CHECKPOINT:** Your move: approve this plan for this one finding. Post it as a
+card of kind `plan`, stage `fix-plan`, answers `buttons` Approve and Needs
+changes. Wait for an explicit answer. Approval for two findings "together" is two approvals for two
 PRs.
 
 ## Change
@@ -166,5 +163,7 @@ the base at `approved`.
 
 ## Next
 
-Report the PR link, then load muda-verify for this PR. Another approved finding
+Post the ready PR as a `step` card with no answers and the PR link; muda-verify's
+Phase 1 adds Merge and Not yet, and the yes comes from Send. Load muda-verify for
+this PR. Another approved finding
 starts over, in its own branch and PR, after this one is handed to muda-verify.
