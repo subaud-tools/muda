@@ -55,9 +55,9 @@ This never replaces muda-verify's gate comparison.
 over 10 minutes: poll, never block. Past either, stop and report what is known;
 never invent a new experiment. Every subagent brief carries this timebox.
 
-**Page:** entry skill's page rule. `muda_status` must answer, else **STOP**. At
-each checkpoint `muda_post` cards, wait for Send, `muda_reply`, record, `muda_post`
-again. Never ask in chat what a card asks.
+**Page:** entry skill's page rule. At each checkpoint `muda_post` cards, each
+recommending one answer with its basis and key number; wait for Send,
+`muda_reply`, record, `muda_post` again. Never ask in chat what a card asks.
 
 **Merging:** only on an explicit yes to that PR, every required check green on
 the reported head: `gh pr merge N --squash --match-head-commit SHA`. No admin

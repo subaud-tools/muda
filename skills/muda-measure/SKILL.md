@@ -44,9 +44,9 @@ hand-edit `.muda/` or the evidence files. Deadlines and sunk time never waive
 the checkpoint. Small samples are normal: label `confidence`, never block on
 them; muda-diagnose rules what they prove.
 
-**Page:** entry skill's page rule. `muda_status` must answer, else **STOP**. At
-each checkpoint `muda_post` cards, wait for Send, `muda_reply`, record, `muda_post`
-again. Never ask in chat what a card asks.
+**Page:** entry skill's page rule. At each checkpoint `muda_post` cards, each
+recommending one answer with its basis and key number; wait for Send,
+`muda_reply`, record, `muda_post` again. Never ask in chat what a card asks.
 
 **Merging:** only on an explicit yes to that PR, every required check green on
 the reported head: `gh pr merge N --squash --match-head-commit SHA`. No admin
@@ -83,8 +83,7 @@ narrowed, and say from what to what. Report that window, never the full period.
 
 ## Present before any write
 
-1. **Roles:** each workflow's candidate `role` and `role_reason`, keyed by
-   workflow `path`.
+1. **Roles:** each workflow's candidate `role` and `role_reason`.
 2. **Stacks:** each confirmed stack, named as `muda packs` lists it when a
    pack does; anything unconfirmed is unrecorded.
 3. **Window:** `since`, `until`, runs and `confidence` per workflow, outages,

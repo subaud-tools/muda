@@ -1105,9 +1105,9 @@ var onPage = map[string]bool{"muda": true, "muda-measure": true, "muda-diagnose"
 
 // pagePointer is the shared page line of every loop skill but the entry skill,
 // which holds the full rule.
-const pagePointer = `**Page:** entry skill's page rule. ` + "`muda_status`" + ` must answer, else **STOP**. At
-each checkpoint ` + "`muda_post`" + ` cards, wait for Send, ` + "`muda_reply`" + `, record, ` + "`muda_post`" + `
-again. Never ask in chat what a card asks.
+const pagePointer = `**Page:** entry skill's page rule. At each checkpoint ` + "`muda_post`" + ` cards, each
+recommending one answer with its basis and key number; wait for Send,
+` + "`muda_reply`" + `, record, ` + "`muda_post`" + ` again. Never ask in chat what a card asks.
 `
 
 func rulesSection(t *testing.T, text string) string {
@@ -1342,5 +1342,18 @@ func TestPRBodyViaScratchFile(t *testing.T) {
 				t.Errorf("%s: stale PR body form %q", n, stale)
 			}
 		}
+	}
+}
+
+// The page keeps the old Messages rule's core: every card recommends one
+// The page keeps the old Messages rule's core: every card recommends one
+// answer, with its key number.
+func TestPageRuleRecommends(t *testing.T) {
+	b, err := muda.Content.ReadFile("skills/muda/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(norm(string(b)), "recommend one answer per card, with its key number") {
+		t.Error("the entry skill's page rule must have every card recommend one answer")
 	}
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- The loop skills (muda, muda-measure, muda-diagnose, muda-fix, muda-verify) decide on muda's page: at each checkpoint the agent posts cards to the project, each recommending one answer with its evidence, and waits for your Send, then records through `muda record` as before and posts again. The baseline takes a role per workflow, findings take an order and Approve, Exempt or Later, and the fix plan, the merge and the verified effect take buttons. The scratch reports are gone. Starting a record and recipe submission text stay in chat; muda-design is unchanged.
+- The skills need the page's channel: the muda plugin in Claude Code, or the muda channel in pi.
+- `muda skills install` installs for `claude` and `pi`; Codex is no longer offered.
+
 ## 0.6.0
 
 - muda has a local page. A project is a set of repositories (or accounts) you pick on the page; New project lists the repositories under a folder you name and whether each already has a muda record. Each project shows its jobs, their stages, and the cards the agent posted, with their evidence, its recommendation and your answer, in the family's three columns with a thread per card. Your answers and notes are drafts until Send, which takes them to the agent together.

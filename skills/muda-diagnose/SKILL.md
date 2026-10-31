@@ -43,9 +43,9 @@ A long step labelled Docker does not prove a rebuild. Read the real pipeline's
 logs before building any reproduction. Record only through the record CLI;
 never hand-edit `.muda/`.
 
-**Page:** entry skill's page rule. `muda_status` must answer, else **STOP**. At
-each checkpoint `muda_post` cards, wait for Send, `muda_reply`, record, `muda_post`
-again. Never ask in chat what a card asks.
+**Page:** entry skill's page rule. At each checkpoint `muda_post` cards, each
+recommending one answer with its basis and key number; wait for Send,
+`muda_reply`, record, `muda_post` again. Never ask in chat what a card asks.
 
 **Merging:** only on an explicit yes to that PR, every required check green on
 the reported head: `gh pr merge N --squash --match-head-commit SHA`. No admin
@@ -125,13 +125,12 @@ or `does not apply`, with the reason. An empty outcome is not allowed, even
 once another recipe explains the sink. A sink with no candidate: a `call` card of outcomes.
 Add an answers `order` card, answers `fields`
 (reason, review-by, agreed-by) for an exemption; expired exemptions take `buttons`
-Renew and Reopen. Your move: agree your
-recommended findings, order, approval, exemptions and renewals, each with a reason. Wait
+Renew and Reopen. Your move: agree findings, order, approval, exemptions and renewals, each with a reason. Wait
 for explicit answers. A `suspected` finding is approved only as an experiment: its `estimate` starts `Experiment:` and
 states pass criteria. It stays `suspected` and never feeds a saving.
 A fix that changes an asset's identity, or shows only on one kind of change,
 ends its `estimate` with `Observe on:` naming the deploy that can show it
-(e.g. the second after merge, on a code-only change); its saving counts from
+(e.g. the second after merge); its saving counts from
 there, not the first rebuild.
 
 ## Record (only after the checkpoint)

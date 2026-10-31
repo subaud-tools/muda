@@ -44,8 +44,8 @@ hand-edit `.muda/`. Normal reads do not edit code or workflows;
 agent-guided fixes need human approval and a PR. Skill installation is a separate,
 explicitly requested write.
 
-**Public text:** anything posted outside the user's repository (a recipe
-submission, an issue) describes the pattern, never the project: no
+**Public text:** anything posted outside the user's repository
+describes the pattern, never the project: no
 organisation, repository, service or team names, run or job ids, URLs, account
 ids, tracker numbers or log-line content. Keep durations and ratios. Show the
 user the exact text; post only on their yes.
@@ -55,11 +55,12 @@ else **STOP** and give the install step: the muda plugin (Claude Code) or
 channels.tools (pi). `muda_open` the project (user's title, repositories as
 groups); `muda_post` job `deployments`, stages `baseline`, `findings`,
 `fix-plan`, `verify`, and cards (kind, class, basis, evidence, recommendation,
-answers); say in one chat line it waits; wait for Send. Settle it with
-`muda_reply`, record through the record CLI, `muda_post` again with what the
-record says. Never ask in chat what a card asks; a STOP's question is a `call`
-card. The Your move merge ask: a `step` card, Merge and Not yet. Starting a
-record and recipe submission text stay in chat.
+answers): recommend one answer per card, with its key number. Say in one chat
+line it waits; wait for Send. Settle it with `muda_reply`, record through the
+record CLI, `muda_post` again with what the record says. Never ask in chat what
+a card asks; a STOP's question is a `call` card. The Your move merge ask: a
+`step` card, Merge and Not yet. Starting a record and recipe submission text
+stay in chat.
 
 **Merging:** only on an explicit yes to that PR, every required check green on
 the reported head: `gh pr merge N --squash --match-head-commit SHA`. No admin
@@ -77,7 +78,7 @@ or merged) is muda-measure's handoff: switch to it and load muda-diagnose,
 which reads the record there. More than one such branch: STOP and ask. It is
 the only unmerged state routed.
 
-If `.muda/` exists, run these local reads before resuming:
+If `.muda/` exists, run these local reads:
 
 ```sh
 muda record check
@@ -128,7 +129,7 @@ Choose the next phase from the validated record, not time pressure:
 | All findings fixed or validly exempt, the recorded baseline window's `until` is later than every fixed finding's PR merge time (`gh pr view <pr> --json mergedAt`, compared as full timestamps), and no exemption `date` is after `until`'s UTC date (the same day counts as not later) | A new cycle's baseline is recorded, not yet diagnosed: load muda-diagnose. If a merge time can't be read, **STOP** and ask. |
 | All findings fixed or validly exempt, otherwise | Stopping rule: report the program complete, citing each finding's receipt, then load muda-measure for the next cycle's baseline. |
 
-Mixed states: report each and recommend the eligible finding to take next. Before routing, check for an unmerged record PR
+Mixed states: report each and recommend the next eligible finding. Before routing, check for an unmerged record PR
 (`gh pr list --json headRefName`, filtered by the `muda/record` prefix); if one
 exists, give the Your move merge ask: never route on
 unmerged state. A fixed finding's PR with null `mergedAt` is unmerged:
