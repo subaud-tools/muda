@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+
+- `muda skills install` also installs the skill of each synced pack that has one, beside muda's own and under the name in the skill's front matter. The text stays the pack's; a `.muda-pack` file beside it marks the copy as muda's to replace. A pack skill named like one of muda's own, or a skill of that name muda did not install, is refused and nothing is written.
+- `muda packs sync` rewrites an installed copy of a pack's skill when it no longer matches the pack: each agent's user skills, and the current repository's. It doesn't install new ones.
+
 ## 0.7.3
 
 - `muda_open` puts the project's page in the session's own Chrome window beside its terminal when it has one, on tools-common 0.46.0. Otherwise it reuses or opens a tab as before. Its answer's `tab` says which: `window`, `reused` or `opened`.

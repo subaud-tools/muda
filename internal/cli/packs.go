@@ -11,6 +11,8 @@ import (
 
 	"github.com/subaud-tools/muda/internal/content"
 	"github.com/subaud-tools/muda/internal/packs"
+	"github.com/subaud-tools/muda/internal/record"
+	"github.com/subaud-tools/muda/internal/skills"
 	"github.com/subaud-tools/muda/internal/version"
 	tools "github.com/subaud-tools/tools-common"
 	"github.com/subaud-tools/tools-common/auth"
@@ -32,7 +34,7 @@ func parsePacks(args []string) (sync bool, err error) {
 func Packs(env Env) tools.Command {
 	return tools.Command{
 		Name: "packs", Summary: "list or sync the recipe packs this account owns", Synopsis: "[sync]", Subcommands: []string{"sync"},
-		Help: "muda packs lists what the last sync said of each pack: owned and the version cached, or not owned. muda packs sync sends the cached versions to the access service with this machine's subaud.tools token (muda login) and replaces each pack that changed.",
+		Help: "muda packs lists what the last sync said of each pack: owned and the version cached, or not owned. muda packs sync sends the cached versions to the access service with this machine's subaud.tools token (muda login) and replaces each pack that changed, then rewrites any installed copy of a pack's skill that no longer matches.",
 		Run: func(args []string, out, _ io.Writer) error {
 			sync, err := parsePacks(args)
 			if err != nil {
@@ -106,7 +108,44 @@ func syncPacks(env Env, cache packs.Cache, out io.Writer) error {
 	if _, err := io.WriteString(out, b.String()); err != nil {
 		return err
 	}
-	return syncErr
+	refreshed, refreshErr := refreshPackSkills(cache)
+	for _, p := range refreshed {
+		if _, err := fmt.Fprintln(out, "refreshed "+p); err != nil {
+			return err
+		}
+	}
+	return errors.Join(syncErr, refreshErr)
+}
+
+// refreshPackSkills rewrites the installed copies of pack skills that changed,
+// wherever this machine can name them: each agent's user skills, and its skills
+// in the repository the command runs in.
+func refreshPackSkills(cache packs.Cache) ([]string, error) {
+	from, err := cache.Skills()
+	if err != nil || len(from) == 0 {
+		return nil, err
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	root := ""
+	if cwd, err := os.Getwd(); err == nil {
+		root, _ = record.Discover(cwd) // outside a repository there are no project copies
+	}
+	var paths []string
+	var errs []error
+	for _, agent := range []string{"claude", "pi"} {
+		for _, scope := range []string{"user", "project"} {
+			if scope == "project" && root == "" {
+				continue
+			}
+			written, err := skills.Refresh(agent, scope, home, root, from)
+			paths = append(paths, written...)
+			errs = append(errs, err)
+		}
+	}
+	return paths, errors.Join(errs...)
 }
 
 func account(page string) string {

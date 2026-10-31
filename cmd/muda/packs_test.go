@@ -59,6 +59,7 @@ func packArchive(t *testing.T, files map[string]string) string {
 // access service at answer.
 func signedIn(t *testing.T, token, answer string) cli.Env {
 	t.Helper()
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MUDA_HOME", t.TempDir())
 	t.Setenv("SUBAUD_HOME", t.TempDir())
 	t.Setenv("SUBAUD_TOKEN", token)
@@ -121,4 +122,59 @@ func TestPacksSyncNeedsASignedInMachine(t *testing.T) {
 	if code != 1 || !strings.Contains(errs, "muda login") {
 		t.Errorf("%d %s", code, errs)
 	}
+}
+
+const widgetToml = "id = \"widget\"\nmuda = \">=0.1.0\"\nstacks = [\"go\"]\n"
+const widgetSkill = "---\nname: muda-widget\ndescription: The pack's own words.\n---\n\nFirst.\n"
+
+func TestSkillsInstallBringsASyncedPacksSkillAndSyncRefreshesIt(t *testing.T) {
+	env := signedIn(t, "sbt_test", `{"packs":[{"id":"widget","status":"changed","tree":"bbb","archive":"`+
+		packArchive(t, map[string]string{"pack.toml": widgetToml, "skill/SKILL.md": widgetSkill})+`"}]}`)
+	home := os.Getenv("HOME")
+	p := filepath.Join(home, ".claude/skills/muda-widget/SKILL.md")
+	if code, _, errs := run(t, env, "packs", "sync"); code != 0 {
+		t.Fatal(errs)
+	}
+	if _, err := os.Stat(p); !os.IsNotExist(err) {
+		t.Fatal("sync installed a new skill")
+	}
+	code, out, errs := run(t, env, "skills", "install", "--agent", "claude")
+	if code != 0 || !strings.Contains(out, p) {
+		t.Fatalf("%d %s %s", code, out, errs)
+	}
+	if b, _ := os.ReadFile(p); string(b) != widgetSkill {
+		t.Fatal(string(b))
+	}
+
+	newer := strings.ReplaceAll(widgetSkill, "First", "Second")
+	env = resync(t, `{"packs":[{"id":"widget","status":"changed","tree":"ccc","archive":"`+
+		packArchive(t, map[string]string{"pack.toml": widgetToml, "skill/SKILL.md": newer})+`"}]}`)
+	code, out, errs = run(t, env, "packs", "sync")
+	if code != 0 || !strings.Contains(out, p) {
+		t.Fatalf("%d %s %s", code, out, errs)
+	}
+	if b, _ := os.ReadFile(p); string(b) != newer {
+		t.Fatal(string(b))
+	}
+	if _, err := os.Stat(filepath.Join(home, ".pi/agent/skills/muda-widget")); !os.IsNotExist(err) {
+		t.Fatal("sync installed for an agent that had no copy")
+	}
+}
+
+func TestSkillsInstallWithNoPackInstallsOnlyMudas(t *testing.T) {
+	env := signedIn(t, "sbt_test", `{"packs":[]}`)
+	code, out, errs := run(t, env, "skills", "install", "--agent", "pi")
+	if code != 0 || strings.Count(out, "SKILL.md") != 6 {
+		t.Fatalf("%d %s %s", code, out, errs)
+	}
+}
+
+// resync points the access service at a new answer, keeping the cache and home.
+func resync(t *testing.T, answer string) cli.Env {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, answer) }))
+	t.Cleanup(srv.Close)
+	env := cli.DefaultEnv()
+	env.PacksAPI = srv.URL
+	return env
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -208,5 +209,34 @@ func TestSyncReadsTheServicesDocumentedAnswer(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(c.Dir, "ci", "pack.toml")); err != nil {
 		t.Error("the documented archive was not unpacked:", err)
+	}
+}
+
+func TestSkillsListsTheOwnedCachedPacksThatHaveOne(t *testing.T) {
+	c := cached(t) // "ci" has no skill
+	for _, name := range []string{"widget/skill/SKILL.md", "gone/skill/SKILL.md"} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(c.Dir, name)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.Dir, name), []byte("text"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := c.writeState(State{Packs: []Entry{{ID: "ci", Status: Owned, Tree: "aaa"}, {ID: "widget", Status: Owned, Tree: "bbb"}, {ID: "gone", Status: NotOwned}}}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.Skills()
+	if err != nil || len(got) != 1 || got[0].ID != "widget" {
+		t.Fatalf("%v %v", got, err)
+	}
+	if b, err := fs.ReadFile(got[0].Skill, "SKILL.md"); err != nil || string(b) != "text" {
+		t.Fatalf("%q %v", b, err)
+	}
+}
+
+func TestSkillsOfAnEmptyCacheIsNone(t *testing.T) {
+	got, err := Cache{Dir: t.TempDir()}.Skills()
+	if err != nil || len(got) != 0 {
+		t.Fatalf("%v %v", got, err)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/subaud-tools/muda"
+	"github.com/subaud-tools/muda/internal/packs"
 	"github.com/subaud-tools/muda/internal/record"
 	"github.com/subaud-tools/muda/internal/skills"
 	tools "github.com/subaud-tools/tools-common"
@@ -16,7 +17,7 @@ func skillsFlags() *flag.FlagSet {
 	f := flag.NewFlagSet("skills", flag.ContinueOnError)
 	f.String("agent", "claude", "claude or pi")
 	f.String("scope", "user", "user or project")
-	tools.SetUsage(f, "muda skills install [--agent claude|pi] [--scope user|project]", "Install bundled, muda-owned skills. No GitHub authentication or network. Existing foreign files and symlinks are refused. This explicit install is an exception to the normal .muda-only record write boundary.")
+	tools.SetUsage(f, "muda skills install [--agent claude|pi] [--scope user|project]", "Install bundled, muda-owned skills and the skill of each synced pack. No GitHub authentication or network. Existing foreign files and symlinks are refused. This explicit install is an exception to the normal .muda-only record write boundary.")
 	return f
 }
 
@@ -57,7 +58,11 @@ func Skills() tools.Command {
 		if e != nil {
 			return e
 		}
-		paths, e := skills.Install(muda.Content, a, s, home, root)
+		fromPacks, e := packs.Default().Skills()
+		if e != nil {
+			return e
+		}
+		paths, e := skills.Install(muda.Content, a, s, home, root, fromPacks...)
 		if e != nil {
 			return e
 		}

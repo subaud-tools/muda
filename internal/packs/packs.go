@@ -23,6 +23,7 @@ import (
 
 	"github.com/subaud-tools/muda"
 	"github.com/subaud-tools/muda/internal/content"
+	"github.com/subaud-tools/muda/internal/skills"
 	tools "github.com/subaud-tools/tools-common"
 	"github.com/subaud-tools/tools-common/auth"
 )
@@ -109,12 +110,38 @@ func (c Cache) Library(version string) (content.Library, error) {
 	}
 	var fss []fs.FS
 	for _, e := range s.Packs {
-		if e.Status != Owned || e.Tree == "" || !packID.MatchString(e.ID) {
-			continue
+		if e.cached() {
+			fss = append(fss, os.DirFS(filepath.Join(c.Dir, e.ID)))
 		}
-		fss = append(fss, os.DirFS(filepath.Join(c.Dir, e.ID)))
 	}
 	return content.Load(muda.Content, fss, version)
+}
+
+// cached reports whether the entry is an owned pack with a copy in the cache.
+func (e Entry) cached() bool {
+	return e.Status == Owned && e.Tree != "" && packID.MatchString(e.ID)
+}
+
+// Skills is the skill of each owned cached pack that has one.
+func (c Cache) Skills() ([]skills.Pack, error) {
+	s, err := c.State()
+	if err != nil {
+		return nil, err
+	}
+	var out []skills.Pack
+	for _, e := range s.Packs {
+		if !e.cached() {
+			continue
+		}
+		dir := filepath.Join(c.Dir, e.ID, "skill")
+		if _, err := os.Stat(filepath.Join(dir, "SKILL.md")); errors.Is(err, fs.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		out = append(out, skills.Pack{ID: e.ID, Skill: os.DirFS(dir)})
+	}
+	return out, nil
 }
 
 // Sync sends the tree hash of each cached pack to the access service at
