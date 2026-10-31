@@ -37,6 +37,7 @@ import {
   sendCount,
   sortDrafts,
   stageCards,
+  takenBySend,
   threadOf,
   waitsOf,
   type Route,
@@ -155,10 +156,10 @@ export function project(s: Shell, first: ProjectRoute): Page {
       text: answerText(c.answers, answer),
       answer,
     };
-    server.picks.set(
-      c.thread,
-      await s.api.post<DraftView>(`${base}/drafts`, body),
-    );
+    // Held as this tab wrote it, so comparing it with the tab's copy means what
+    // it says; the server's copy may spell the same answer differently.
+    const saved = await s.api.post<DraftView>(`${base}/drafts`, body);
+    server.picks.set(c.thread, { ...saved, answer });
   }
 
   /** Make the server's notes what the boxes hold. */
@@ -245,8 +246,13 @@ export function project(s: Shell, first: ProjectRoute): Page {
   function send(): void {
     void flush();
     void enqueue(async () => {
+      // The queue holds every save back while this runs, so what the server has
+      // now is what goes. Anything else in this tab's copy stays a draft, and
+      // its own save, queued or on its timer, writes it after.
       const r = await s.api.post<SendResult>(`${base}/send`);
-      drafts.discard('note:');
+      const taken = takenBySend(server, drafts.picks, drafts.notes('note:'));
+      for (const t of taken.picks) drafts.picks.delete(t);
+      for (const t of taken.notes) drafts.take(`note:${t}`);
       server = sortDrafts([], WORDS);
       s.bar.setStatus(view?.title ?? '');
       flashSent(r.sent);

@@ -17,6 +17,7 @@ import {
   questionsOf,
   sendCount,
   sortDrafts,
+  takenBySend,
   stageCards,
   statusItems,
   threadOf,
@@ -399,6 +400,34 @@ test('Send counts the picks and questions held and the notes with words', () => 
     sendCount({ picks: 1, questions: 2, notes: ['why?', '   ', ''] }),
     4,
   );
+});
+
+test('Send takes only what still reads as it went', () => {
+  const sent = sortDrafts(
+    [
+      draft({ id: 1, thread: 1, answer: { kind: 'buttons', choice: 'ok' } }),
+      draft({ id: 2, thread: 2, answer: { kind: 'buttons', choice: 'ok' } }),
+      draft({ id: 3, thread: 1, text: 'went' }),
+      draft({ id: 4, thread: 2, text: 'went' }),
+    ],
+    [],
+  );
+  const same = JSON.stringify({ kind: 'buttons', choice: 'ok' });
+  const newer = JSON.stringify({ kind: 'buttons', choice: 'no' });
+  const out = takenBySend(
+    sent,
+    new Map([
+      ['1', same],
+      ['2', newer],
+      ['3', same],
+    ]),
+    new Map([
+      ['1', ' went '],
+      ['2', 'went, and more'],
+      ['3', 'new'],
+    ]),
+  );
+  assert.deepEqual(out, { picks: ['1'], notes: ['1'] });
 });
 
 test('a question reads asked while it is a draft or waits on an answer', () => {

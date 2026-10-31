@@ -331,6 +331,23 @@ export function sendCount(o: {
   return o.picks + o.questions + o.notes.filter((n) => n.trim()).length;
 }
 
+/** What Send took out of a tab's copy, by thread: only the picks and notes that
+ * still read as the server held them when it went. A newer one stays a draft. */
+export function takenBySend(
+  sent: SortedDrafts,
+  picks: Map<string, string>,
+  notes: Map<string, string>,
+): { picks: string[]; notes: string[] } {
+  return {
+    picks: [...picks]
+      .filter(([t, raw]) => raw === JSON.stringify(sent.picks.get(+t)?.answer))
+      .map(([t]) => t),
+    notes: [...notes]
+      .filter(([t, text]) => text.trim() === sent.notes.get(+t)?.text)
+      .map(([t]) => t),
+  };
+}
+
 const SETTLED = ['answered', 'declined', 'failed', 'no_reply'];
 
 /** Which questions a card has out: held as drafts, or sent and not answered. */

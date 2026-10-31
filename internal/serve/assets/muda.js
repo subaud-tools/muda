@@ -209,6 +209,12 @@ function sortDrafts(ds, words) {
 function sendCount(o) {
   return o.picks + o.questions + o.notes.filter((n) => n.trim()).length;
 }
+function takenBySend(sent, picks, notes) {
+  return {
+    picks: [...picks].filter(([t, raw]) => raw === JSON.stringify(sent.picks.get(+t)?.answer)).map(([t]) => t),
+    notes: [...notes].filter(([t, text]) => text.trim() === sent.notes.get(+t)?.text).map(([t]) => t)
+  };
+}
 var SETTLED = ["answered", "declined", "failed", "no_reply"];
 function questionsOf(messages, drafts, words) {
   return {
@@ -921,10 +927,8 @@ function project(s, first) {
       text: answerText(c.answers, answer),
       answer
     };
-    server.picks.set(
-      c.thread,
-      await s.api.post(`${base}/drafts`, body)
-    );
+    const saved = await s.api.post(`${base}/drafts`, body);
+    server.picks.set(c.thread, { ...saved, answer });
   }
   async function saveNotes() {
     for (const [key, text] of drafts.notes("note:")) {
@@ -1004,7 +1008,9 @@ function project(s, first) {
     void flush();
     void enqueue(async () => {
       const r = await s.api.post(`${base}/send`);
-      drafts.discard("note:");
+      const taken = takenBySend(server, drafts.picks, drafts.notes("note:"));
+      for (const t of taken.picks) drafts.picks.delete(t);
+      for (const t of taken.notes) drafts.take(`note:${t}`);
       server = sortDrafts([], WORDS);
       s.bar.setStatus(view?.title ?? "");
       flashSent(r.sent);

@@ -472,9 +472,78 @@ async function atWidth(browser, width) {
   await context.close();
 }
 
+// Drafts that must survive: each on its own serve, with the network held or
+// failed by the browser so the timing is the check's.
+async function draftsPage(browser) {
+  const serve = await startServe();
+  onCleanup(() => serve.stop());
+  const family = serve.projects['Family tools'];
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 844 },
+  });
+  const page = await context.newPage();
+  const card = page.locator('.kit-card[data-card$="/F-002"]');
+  await page.goto(`${serve.url}${cardHash(family, GALLEY, 'F-002')}`);
+  await card.waitFor();
+  return {
+    page,
+    card,
+    family,
+    note: card.locator('textarea.kit-draft'),
+    pressed: (option) =>
+      card.locator(`[data-option="${option}"]`).getAttribute('aria-pressed'),
+    view: () => serve.call('GET', `/api/projects/${family}`),
+    status: () => serve.call('GET', '/api/agent/status'),
+    close: () => context.close(),
+  };
+}
+
+async function editsDuringSend(browser) {
+  console.log('\n== edits made while Send runs');
+  const d = await draftsPage(browser);
+  await d.card.locator('[data-option="approve"]').click();
+  await d.note.fill('The note that went.');
+  await until(async () => (await d.view()).drafts.length === 2);
+  let release;
+  const held = new Promise((r) => (release = r));
+  await d.page.route('**/send', async (route) => {
+    const response = await route.fetch();
+    await held;
+    await route.fulfill({ response });
+  });
+  await d.page.getByRole('button', { name: 'Send 2' }).click();
+  await until(async () => (await d.view()).messages.length === 2);
+  // The server has taken the batch; its answer is still on the way.
+  await d.card.locator('[data-option="exempt"]').click();
+  await d.note.fill('The note written after.');
+  release();
+  await until(async () => (await d.view()).drafts.length === 2);
+  await sleep(700);
+  const v = await d.view();
+  const got = {
+    sent: v.messages.map((m) => m.text).sort(),
+    drafts: v.drafts.map((x) => x.answer?.choice ?? x.text).sort(),
+    box: await d.note.inputValue(),
+    pressed: await d.pressed('exempt'),
+  };
+  check(
+    'an edit made while Send runs stays a draft and is saved',
+    JSON.stringify(got) ===
+      JSON.stringify({
+        sent: ['Approve', 'The note that went.'],
+        drafts: ['The note written after.', 'exempt'],
+        box: 'The note written after.',
+        pressed: 'true',
+      }),
+    JSON.stringify(got),
+  );
+  await d.close();
+}
+
 run(async () => {
   const browser = await launchOrSkip();
   if (!browser) return;
   for (const width of [1280, 390]) await atWidth(browser, width);
+  await editsDuringSend(browser);
   console.log(`\nscreenshots: ${out}`);
 });
