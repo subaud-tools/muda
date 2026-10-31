@@ -44,13 +44,9 @@ hand-edit `.muda/` or the evidence files. Deadlines and sunk time never waive
 the checkpoint. Small samples are normal: label `confidence`, never block on
 them; muda-diagnose rules what they prove.
 
-**Messages:** recommend, never survey: decide every answer (order, labels,
-approval). One line per checkpoint item: what, basis, key number,
-recommendation; full evidence and every recipe outcome go to a named,
-uncommitted scratch report (e.g. `.muda-diagnose.md`). At most three status
-bullets; no open "go ahead?". End with one ask: "**Your move:** reply 'yes' or
-name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
-(link) once green, or merge and reply 'merged'".
+**Page:** entry skill's page rule. `muda_status` must answer, else **STOP**. At
+each checkpoint `muda_post` cards, wait for Send, `muda_reply`, record, `muda_post`
+again. Never ask in chat what a card asks.
 
 **Merging:** only on an explicit yes to that PR, every required check green on
 the reported head: `gh pr merge N --squash --match-head-commit SHA`. No admin
@@ -106,15 +102,18 @@ narrowed, and say from what to what. Report that window, never the full period.
 6. **Existing record:** whether roles, stacks and window (both `since` and
    `until`) match muda.toml.
 
-**CHECKPOINT:** Your move: confirm roles, stacks, gate inventory with its
-unavailable gaps, and window as representative. Wait for an explicit answer on
-each.
+**CHECKPOINT:** Your move: confirm roles, stacks, gate inventory and window as
+representative. Post them: a card of kind `baseline`, stage `baseline`, with
+evidence from measure, gates and scan (gate gaps stay evidence) and answers of
+kind `rows`, a role per workflow, defaulting to the candidate, and a gate
+inventory row; a second, answers of kind `fields`, for stacks and window. Wait
+for an explicit answer on each.
 
 Record the gate inventory exactly as derived;
 never trim, add or "green" it. Keep a human's dispute of a derived gate
 attributed to them; settle it by an exemption (covering the exact file) or a
 required-check change at source. If the window changes, rerun all three with
-the same confirmed `--since` and reconfirm. If anything above cannot be
+the same confirmed `--since` and reconfirm, re-posting the card. If anything above cannot be
 confirmed, stop without a baseline, saying what remains and what settles it.
 
 If confirmed settings differ from muda.toml, ask the human to confirm the

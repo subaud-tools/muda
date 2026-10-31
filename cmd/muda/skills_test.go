@@ -1101,7 +1101,14 @@ name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
 ` + mergingRule
 
 // onPage lists the skills whose checkpoints are posted to muda's page.
-var onPage = map[string]bool{"muda": true}
+var onPage = map[string]bool{"muda": true, "muda-measure": true}
+
+// pagePointer is the shared page line of every loop skill but the entry skill,
+// which holds the full rule.
+const pagePointer = `**Page:** entry skill's page rule. ` + "`muda_status`" + ` must answer, else **STOP**. At
+each checkpoint ` + "`muda_post`" + ` cards, wait for Send, ` + "`muda_reply`" + `, record, ` + "`muda_post`" + `
+again. Never ask in chat what a card asks.
+`
 
 func rulesSection(t *testing.T, text string) string {
 	t.Helper()
@@ -1126,8 +1133,10 @@ func TestGuidedMessageAndMergeRules(t *testing.T) {
 		text := string(b)
 		rules := rulesSection(t, text)
 		want := guidedRules
-		if onPage[n] {
+		if n == "muda" {
 			want = mergingRule
+		} else if onPage[n] {
+			want = pagePointer + "\n" + mergingRule
 		}
 		if !strings.HasSuffix(rules, "\n\n"+want+"\n") {
 			t.Errorf("%s: Rules must end with the shared rules, verbatim", n)
@@ -1215,6 +1224,31 @@ func TestEntryPageRule(t *testing.T) {
 	for _, s := range []string{"scratch report", ".muda-diagnose.md", "reply 'merged'"} {
 		if strings.Contains(text, s) {
 			t.Error("stale", s)
+		}
+	}
+}
+
+// Each loop skill names the cards its checkpoint posts; none keeps a scratch report.
+func TestSkillCheckpointCards(t *testing.T) {
+	for n, want := range map[string][]string{
+		"muda-measure": {"card of kind `baseline`", "evidence from measure, gates and scan", "gate gaps stay evidence",
+			"answers of kind `rows`", "a role per workflow, defaulting to the candidate", "answers of kind `fields`, for stacks and window",
+			"reconfirm, re-posting the card"},
+	} {
+		b, e := muda.Content.ReadFile("skills/" + n + "/SKILL.md")
+		if e != nil {
+			t.Fatal(e)
+		}
+		text := norm(string(b))
+		for _, s := range want {
+			if !strings.Contains(text, norm(s)) {
+				t.Errorf("%s missing %q", n, s)
+			}
+		}
+		for _, s := range []string{"scratch report", ".muda-diagnose.md"} {
+			if strings.Contains(text, s) {
+				t.Errorf("%s: stale %q", n, s)
+			}
 		}
 	}
 }
