@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2
+
+- The page wears muda's family colours, olive, and the muda.tools mark as its favicon.
+
 ## 0.7.1
 
 - The page: changing your answer on a card quickly no longer takes it back. A click made while the page was about to redraw read the answer as it was drawn, so it removed the answer instead of replacing it.

@@ -1,7 +1,7 @@
 /* muda.css */
 :root {
-  --tool-signal-light: #2f7a66;
-  --tool-signal-dark: #7cc7b0;
+  --tool-signal-light: #6e7522;
+  --tool-signal-dark: #b9c06d;
 }
 .kit-app.muda-app {
   grid-template-rows: auto auto minmax(0, 1fr);
