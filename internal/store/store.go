@@ -501,6 +501,11 @@ func (s *Store) Post(ctx context.Context, project int64, p Posted, by string) er
 	if _, err := s.Project(ctx, project); err != nil {
 		return err
 	}
+	for _, c := range p.Cards {
+		if err := checkCard(c); err != nil {
+			return err
+		}
+	}
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		if p.Working != nil {
 			if _, err := tx.ExecContext(ctx, "UPDATE projects SET working = ? WHERE id = ?", *p.Working, project); err != nil {
@@ -517,6 +522,9 @@ func (s *Store) Post(ctx context.Context, project int64, p Posted, by string) er
 		}
 		now := s.Now().UnixMilli()
 		for _, c := range p.Cards {
+			if err := checkPlace(ctx, tx, project, c); err != nil {
+				return err
+			}
 			if err := s.postCard(ctx, tx, project, c, now); err != nil {
 				return err
 			}
@@ -578,3 +586,16 @@ func (s *Store) postCard(ctx context.Context, tx *sql.Tx, project int64, c Card,
 type Refused struct{ Reason string }
 
 func (r Refused) Error() string { return r.Reason }
+
+// CardOfThread is the card a thread belongs to, ErrNoCard for a project's own.
+func (s *Store) CardOfThread(ctx context.Context, thread int64) (Card, error) {
+	var c Card
+	err := s.DB.QueryRowContext(ctx, "SELECT job, grp, stage, id, title FROM cards WHERE thread_id = ?", thread).Scan(&c.Job, &c.Group, &c.Stage, &c.ID, &c.Title)
+	if errors.Is(err, sql.ErrNoRows) {
+		return c, ErrNoCard
+	}
+	return c, err
+}
+
+// ErrNoCard is a thread with no card.
+var ErrNoCard = errors.New("no such card")

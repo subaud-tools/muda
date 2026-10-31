@@ -6,6 +6,7 @@ import (
 
 	"github.com/subaud-tools/muda/internal/channel"
 	"github.com/subaud-tools/muda/internal/serve"
+	"github.com/subaud-tools/muda/internal/store"
 	"github.com/subaud-tools/muda/internal/version"
 	tools "github.com/subaud-tools/tools-common"
 	"github.com/subaud-tools/tools-common/pageserve"
@@ -22,7 +23,12 @@ func shell() pageserve.Commands {
 }
 
 func serveForeground(ctx context.Context, port int, errw io.Writer) error {
-	return serve.Run(ctx, serve.Options{Port: port, Version: version.Version().Number, Log: errw})
+	st, err := store.Open(ctx, store.Path())
+	if err != nil {
+		return err
+	}
+	defer func() { _ = st.Close() }()
+	return serve.Run(ctx, st, serve.Options{Port: port, Version: version.Version().Number, Log: errw})
 }
 
 // PageCommands are muda's commands for its page and an agent session's channel.
