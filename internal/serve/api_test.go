@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/subaud-tools/muda/internal/store"
@@ -170,18 +171,62 @@ func TestNewProjectAddsTheTickedGroups(t *testing.T) {
 	r.do("POST", "/api/projects", ProjectBody{Title: " "}, 422, nil)
 }
 
+// repo makes a Git repository at dir. Its git runs without the GIT_*
+// variables a hook sets, so it never touches the repository running the tests,
+// and it checks that the repository it made is dir's own.
 func repo(t *testing.T, dir, origin string) {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := exec.Command("git", "-C", dir, "init", "-q").CombinedOutput(); err != nil {
-		t.Fatalf("%v: %s", err, out)
+	git := func(args ...string) string {
+		t.Helper()
+		c := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		c.Env = gitEnv()
+		out, err := c.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	git("init", "-q")
+	if got := git("rev-parse", "--absolute-git-dir"); got != filepath.Join(evalDir(t, dir), ".git") {
+		t.Fatalf("git init made %s, not a repository in %s", got, dir)
 	}
 	if origin != "" {
-		if out, err := exec.Command("git", "-C", dir, "remote", "add", "origin", origin).CombinedOutput(); err != nil {
-			t.Fatalf("%v: %s", err, out)
-		}
+		git("remote", "add", "origin", origin)
+	}
+}
+
+func evalDir(t *testing.T, dir string) string {
+	t.Helper()
+	d, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return d
+}
+
+// A hook runs the tests with GIT_DIR set to the repository being pushed. The
+// scan must still read each scanned repository's own origin, and nothing may
+// touch the hook's repository.
+func TestScanIgnoresAHooksGitVariables(t *testing.T) {
+	other := t.TempDir()
+	repo(t, other, "https://github.com/o/other")
+	t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
+	t.Setenv("GIT_WORK_TREE", other)
+	r := newRig(t)
+	dir := t.TempDir()
+	repo(t, filepath.Join(dir, "one"), "https://github.com/o/one")
+	var got ScanResult
+	r.do("GET", "/api/scan?folder="+dir, nil, 200, &got)
+	if len(got.Repos) != 1 || got.Repos[0].Name != "o/one" {
+		t.Fatalf("%+v", got.Repos)
+	}
+	c := exec.Command("git", "-C", other, "config", "--get", "core.bare")
+	c.Env = gitEnv()
+	if out, _ := c.Output(); strings.TrimSpace(string(out)) != "false" {
+		t.Fatalf("the hook's repository has core.bare %q", out)
 	}
 }
 

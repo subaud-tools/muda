@@ -54,7 +54,9 @@ func githubName(remote string) string {
 func origin(ctx context.Context, dir string) string {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, "git", "-C", dir, "config", "--get", "remote.origin.url").Output() //nolint:gosec // G204: dir is a folder on this machine, not a command
+	c := exec.CommandContext(ctx, "git", "-C", dir, "config", "--get", "remote.origin.url") //nolint:gosec // G204: dir is a folder on this machine, not a command
+	c.Env = gitEnv()
+	out, err := c.Output()
 	if err != nil {
 		return ""
 	}
@@ -107,4 +109,16 @@ func (s *Server) scan(w http.ResponseWriter, r *http.Request) {
 		repos = []ScannedRepo{}
 	}
 	writeJSON(w, http.StatusOK, ScanResult{Folder: folder, Repos: repos})
+}
+
+// gitEnv is this process's environment without the GIT_* variables a hook
+// sets, so a git run with -C reads the repository at that path and no other.
+func gitEnv() []string {
+	var env []string
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "GIT_") {
+			env = append(env, kv)
+		}
+	}
+	return env
 }
