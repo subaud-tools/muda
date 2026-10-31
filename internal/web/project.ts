@@ -826,12 +826,15 @@ export function project(s: Shell, first: ProjectRoute): Page {
   }
 
   async function load(): Promise<void> {
+    // The server's drafts are taken only from a read that no save overlapped:
+    // one fetched while a save was running can hold a pick the save replaced.
     const at = edits;
+    const settled = !busy && !timer;
     const v = await s.api.get<ProjectView>(base);
     if (stopped) return;
     view = v;
     s.bar.setStatus(v.title);
-    if (at === edits && !busy && !timer) adopt(v);
+    if (settled && at === edits && !busy && !timer) adopt(v);
     draw();
   }
 

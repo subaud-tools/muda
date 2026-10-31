@@ -1498,11 +1498,12 @@ function project(s, first) {
   }
   async function load() {
     const at = edits;
+    const settled = !busy && !timer;
     const v = await s.api.get(base);
     if (stopped) return;
     view = v;
     s.bar.setStatus(v.title);
-    if (at === edits && !busy && !timer) adopt(v);
+    if (settled && at === edits && !busy && !timer) adopt(v);
     draw();
   }
   void load();
