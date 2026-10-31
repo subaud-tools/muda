@@ -454,9 +454,9 @@ func TestDiagnoseSkillContract(t *testing.T) {
 		// carry several wastes.
 		"read every recipe it lists", "run each one's Detect section or note why it does not apply",
 		"One sink can carry several wastes",
-		// Stage 1 follow-up T1: the checkpoint reports every listed recipe's
+		// Stage 1 follow-up T1: the checkpoint's cards carry every listed recipe's
 		// outcome, so a second waste on an explained sink is never dropped.
-		"For each sink or signal", "the report lists every recipe step 1 listed", "one outcome each",
+		"For each sink or signal", "its card's evidence lists every recipe step 1 listed", "one outcome each",
 		"`measured`, `suspected` or `not shown`, with the evidence read", "or `does not apply`, with the reason",
 		"An empty outcome is not allowed", "even once another recipe explains the sink",
 		// T1 fix round 1: `not shown` needs a Detect that ran (I-2); the record
@@ -1101,7 +1101,7 @@ name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
 ` + mergingRule
 
 // onPage lists the skills whose checkpoints are posted to muda's page.
-var onPage = map[string]bool{"muda": true, "muda-measure": true}
+var onPage = map[string]bool{"muda": true, "muda-measure": true, "muda-diagnose": true}
 
 // pagePointer is the shared page line of every loop skill but the entry skill,
 // which holds the full rule.
@@ -1234,6 +1234,8 @@ func TestSkillCheckpointCards(t *testing.T) {
 		"muda-measure": {"card of kind `baseline`", "evidence from measure, gates and scan", "gate gaps stay evidence",
 			"answers of kind `rows`", "a role per workflow, defaulting to the candidate", "answers of kind `fields`, for stacks and window",
 			"reconfirm, re-posting the card"},
+		"muda-diagnose": {"cards of kind `finding`", "`class` its W class", "`basis` `measured` or `suspected`", "`buttons` Approve, Exempt and Later",
+			"answers `order`", "answers `fields` (reason, review-by, agreed-by)", "`buttons` Renew and Reopen", "stage `findings`", "A sink with no candidate"},
 	} {
 		b, e := muda.Content.ReadFile("skills/" + n + "/SKILL.md")
 		if e != nil {
