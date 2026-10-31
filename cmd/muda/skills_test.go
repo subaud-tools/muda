@@ -1101,7 +1101,7 @@ name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
 ` + mergingRule
 
 // onPage lists the skills whose checkpoints are posted to muda's page.
-var onPage = map[string]bool{"muda": true, "muda-measure": true, "muda-diagnose": true, "muda-fix": true}
+var onPage = map[string]bool{"muda": true, "muda-measure": true, "muda-diagnose": true, "muda-fix": true, "muda-verify": true}
 
 // pagePointer is the shared page line of every loop skill but the entry skill,
 // which holds the full rule.
@@ -1238,6 +1238,8 @@ func TestSkillCheckpointCards(t *testing.T) {
 			"answers `order`", "answers `fields` (reason, review-by, agreed-by)", "`buttons` Renew and Reopen", "stage `findings`", "A sink with no candidate"},
 		"muda-fix": {"card of kind `plan`", "stage `fix-plan`", "`buttons` Approve and Needs changes",
 			"the ready PR as a `step` card with no answers", "muda-verify's Phase 1 adds Merge and Not yet"},
+		"muda-verify": {"card of kind `verdict`", "stage `verify`", "the compare output word for word in its evidence", "`buttons` Fixed, Reopened and Stays in PR",
+			"The merge ask adds Merge and Not yet to the ready PR's `step` card"},
 	} {
 		b, e := muda.Content.ReadFile("skills/" + n + "/SKILL.md")
 		if e != nil {
