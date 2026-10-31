@@ -1124,6 +1124,7 @@ function project(s, first) {
   });
   let pressing = false;
   let pending = false;
+  let drawing = false;
   const stopping = new AbortController();
   const { signal } = stopping;
   document.addEventListener(
@@ -1566,18 +1567,24 @@ function project(s, first) {
   }
   function draw() {
     if (stopped) return;
-    if (pressing) {
+    if (pressing || drawing) {
       pending = true;
       return;
     }
     pending = false;
     const v = view;
     if (!v) return;
-    drawBand(v);
-    drawLeft(v);
-    put(centre, centreOf(v));
-    drawRight(v);
-    drawFoot();
+    drawing = true;
+    try {
+      drawBand(v);
+      drawLeft(v);
+      put(centre, centreOf(v));
+      drawRight(v);
+      drawFoot();
+    } finally {
+      drawing = false;
+    }
+    if (pending) draw();
   }
   function adopt(v) {
     server = sortDrafts(v.drafts ?? [], WORDS);
