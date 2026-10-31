@@ -36,6 +36,8 @@ muda skills install --agent claude --scope user
 Agents are `claude` and `pi`. Scopes are `user` (the default) and
 `project` (the Git root of the current repository).
 
+The install also brings the skill of each pack you have synced, and `muda packs sync` keeps those installed copies up to date.
+
 The skills ask you their questions on muda's page (see [The page](#the-page)),
 which reaches the session through the muda plugin in Claude Code
 (`/plugin install muda@subaud-tools` from the subaud-tools marketplace,

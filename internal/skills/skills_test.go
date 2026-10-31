@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -482,5 +483,106 @@ func TestCodexIsNotATarget(t *testing.T) {
 	home := t.TempDir()
 	if _, _, err := skills.Target("codex", "user", home, ""); err == nil {
 		t.Fatal("codex accepted")
+	}
+}
+
+const widgetSkill = "---\nname: muda-widget\ndescription: Not muda's lint, the pack's own words.\n---\n\nThe pack's text.\n"
+
+func widgetPack(text string) skills.Pack {
+	return skills.Pack{ID: "widget", Skill: fstest.MapFS{"SKILL.md": &fstest.MapFile{Data: []byte(text)}, "notes/more.md": &fstest.MapFile{Data: []byte("more")}}}
+}
+
+func TestInstallCopiesAPackSkillUnderItsOwnName(t *testing.T) {
+	home := t.TempDir()
+	paths, err := skills.Install(fixture(), "claude", "user", home, "", widgetPack(widgetSkill))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(home, ".claude/skills/muda-widget")
+	b, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+	if err != nil || string(b) != widgetSkill {
+		t.Fatalf("%q %v", b, err)
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "notes/more.md")); err != nil || string(b) != "more" {
+		t.Fatalf("%q %v", b, err)
+	}
+	if !slices.Contains(paths, filepath.Join(dir, "SKILL.md")) || len(paths) != 8 {
+		t.Fatal(paths)
+	}
+	if _, err := skills.Install(fixture(), "claude", "user", home, "", widgetPack(widgetSkill+"Newer.\n")); err != nil {
+		t.Fatal("a copy muda installed must be replaceable:", err)
+	}
+}
+
+func TestInstallRefusesAPackSkillNamedLikeAMudaSkill(t *testing.T) {
+	home := t.TempDir()
+	text := strings.ReplaceAll(widgetSkill, "muda-widget", "muda-fix")
+	_, err := skills.Install(fixture(), "claude", "user", home, "", widgetPack(text))
+	if err == nil || !strings.Contains(err.Error(), "widget") || !strings.Contains(err.Error(), `"muda-fix"`) {
+		t.Fatalf("%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".claude")); !os.IsNotExist(err) {
+		t.Fatal("wrote before refusing")
+	}
+}
+
+func TestInstallRefusesAPackSkillOverAForeignOne(t *testing.T) {
+	home := t.TempDir()
+	p := filepath.Join(home, ".claude/skills/muda-widget/SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("mine"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := skills.Install(fixture(), "claude", "user", home, "", widgetPack(widgetSkill)); err == nil {
+		t.Fatal("overwrote a skill muda did not install")
+	}
+	if b, _ := os.ReadFile(p); string(b) != "mine" {
+		t.Fatal(string(b))
+	}
+}
+
+func TestRefreshRewritesAnInstalledPackSkillThatChanged(t *testing.T) {
+	home := t.TempDir()
+	if _, err := skills.Install(fixture(), "pi", "user", home, "", widgetPack(widgetSkill)); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(home, ".pi/agent/skills/muda-widget/SKILL.md")
+	paths, err := skills.Refresh("pi", "user", home, "", []skills.Pack{widgetPack(widgetSkill)})
+	if err != nil || len(paths) != 0 {
+		t.Fatalf("an unchanged skill: %v %v", paths, err)
+	}
+	paths, err = skills.Refresh("pi", "user", home, "", []skills.Pack{widgetPack(widgetSkill + "Newer.\n")})
+	if err != nil || !slices.Contains(paths, p) {
+		t.Fatalf("%v %v", paths, err)
+	}
+	if b, _ := os.ReadFile(p); string(b) != widgetSkill+"Newer.\n" {
+		t.Fatal(string(b))
+	}
+}
+
+func TestRefreshInstallsNothingNew(t *testing.T) {
+	home := t.TempDir()
+	paths, err := skills.Refresh("claude", "user", home, "", []skills.Pack{widgetPack(widgetSkill)})
+	if err != nil || len(paths) != 0 {
+		t.Fatalf("%v %v", paths, err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".claude")); !os.IsNotExist(err) {
+		t.Fatal("created the skills root")
+	}
+	// A skill of the same name that muda did not install is not a copy.
+	p := filepath.Join(home, ".claude/skills/muda-widget/SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("mine"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if paths, err := skills.Refresh("claude", "user", home, "", []skills.Pack{widgetPack(widgetSkill)}); err != nil || len(paths) != 0 {
+		t.Fatalf("%v %v", paths, err)
+	}
+	if b, _ := os.ReadFile(p); string(b) != "mine" {
+		t.Fatal(string(b))
 	}
 }
