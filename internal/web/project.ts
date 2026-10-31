@@ -404,6 +404,7 @@ export function project(s: Shell, first: ProjectRoute): Page {
   // would lose the click.
   let pressing = false;
   let pending = false;
+  let drawing = false;
   const stopping = new AbortController();
   const { signal } = stopping;
   document.addEventListener(
@@ -661,7 +662,9 @@ export function project(s: Shell, first: ProjectRoute): Page {
             { 'data-part': 'answers', 'data-kind': c.answers.kind },
             h('div', { class: 'kit-label' }, 'Your answer'),
             answerControls(c.answers, {
-              answer,
+              get answer() {
+                return pickOf(c.thread);
+              },
               key: `answer:${c.thread}`,
               set: (a, typing) => setPick(c, a, typing),
             }),
@@ -920,18 +923,26 @@ export function project(s: Shell, first: ProjectRoute): Page {
 
   function draw(): void {
     if (stopped) return;
-    if (pressing) {
+    if (pressing || drawing) {
       pending = true;
       return;
     }
     pending = false;
     const v = view;
     if (!v) return;
-    drawBand(v);
-    drawLeft(v);
-    put(centre, centreOf(v));
-    drawRight(v);
-    drawFoot();
+    // Taking a field with uncommitted text off the page fires its change right
+    // there, and that handler asks for a draw: it waits until this one is done.
+    drawing = true;
+    try {
+      drawBand(v);
+      drawLeft(v);
+      put(centre, centreOf(v));
+      drawRight(v);
+      drawFoot();
+    } finally {
+      drawing = false;
+    }
+    if (pending) draw();
   }
 
   /** Take the server's drafts as the truth, when no save of ours is on the way. */

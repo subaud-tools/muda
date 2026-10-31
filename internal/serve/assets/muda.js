@@ -664,7 +664,11 @@ function buttonsKind(a, s) {
             "data-option": o.id,
             "data-focus": `${s.key}:${o.id}`,
             "aria-pressed": String(on),
-            onclick: () => s.set(on ? null : { kind: "buttons", choice: o.id })
+            // Read when clicked: a redraw waits out a press, so what was held
+            // when these buttons were drawn may not be what is held now.
+            onclick: () => s.set(
+              s.answer?.choice === o.id ? null : { kind: "buttons", choice: o.id }
+            )
           },
           o.label
         );
@@ -1120,6 +1124,7 @@ function project(s, first) {
   });
   let pressing = false;
   let pending = false;
+  let drawing = false;
   const stopping = new AbortController();
   const { signal } = stopping;
   document.addEventListener(
@@ -1337,7 +1342,9 @@ function project(s, first) {
         { "data-part": "answers", "data-kind": c.answers.kind },
         h5("div", { class: "kit-label" }, "Your answer"),
         answerControls(c.answers, {
-          answer,
+          get answer() {
+            return pickOf(c.thread);
+          },
           key: `answer:${c.thread}`,
           set: (a, typing) => setPick(c, a, typing)
         })
@@ -1560,18 +1567,24 @@ function project(s, first) {
   }
   function draw() {
     if (stopped) return;
-    if (pressing) {
+    if (pressing || drawing) {
       pending = true;
       return;
     }
     pending = false;
     const v = view;
     if (!v) return;
-    drawBand(v);
-    drawLeft(v);
-    put(centre, centreOf(v));
-    drawRight(v);
-    drawFoot();
+    drawing = true;
+    try {
+      drawBand(v);
+      drawLeft(v);
+      put(centre, centreOf(v));
+      drawRight(v);
+      drawFoot();
+    } finally {
+      drawing = false;
+    }
+    if (pending) draw();
   }
   function adopt(v) {
     server = sortDrafts(v.drafts ?? [], WORDS);
