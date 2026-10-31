@@ -917,16 +917,29 @@ function project(s, first) {
   let edits = 0;
   let timer = null;
   const unsavedPicks = /* @__PURE__ */ new Map();
+  let asks = [];
+  let saveError = "";
+  let refused = "";
   const unsavedKey = `muda:unsaved:${id}`;
   let restoring = readUnsaved(unsavedKey);
   const pickOf = (thread2) => {
     const raw = drafts.picks.get(String(thread2));
     return raw ? JSON.parse(raw) : null;
   };
-  function enqueue(fn) {
+  function say() {
+    if (stopped) return;
+    const wrong = saveError || refused;
+    if (wrong) s.bar.setStatus(wrong, { tone: "danger" });
+    else s.bar.setStatus(view?.title ?? "");
+  }
+  function saveFailed(err) {
+    saveError = `Not saved: ${err.message}. Your drafts stay here and nothing was sent; Send tries again.`;
+    say();
+  }
+  function enqueue(fn, failed = saveFailed) {
     edits++;
     busy++;
-    chain = chain.then(fn).catch((err) => s.bar.setStatus(err.message, { tone: "danger" })).finally(() => {
+    chain = chain.then(fn).catch(failed).finally(() => {
       busy--;
       if (!busy && !timer) void load();
     });
@@ -977,7 +990,19 @@ function project(s, first) {
       await savePick(c);
       if (drafts.picks.get(String(t)) === raw) unsavedPicks.delete(t);
     }
+    while (asks.length) {
+      const { thread: thread2, text } = asks[0];
+      const body = { thread: thread2, text, answer: null };
+      const d = await s.api.post(`${base}/drafts`, body);
+      asks = asks.slice(1);
+      server.questions.set(thread2, [
+        ...server.questions.get(thread2) ?? [],
+        d
+      ]);
+    }
     await saveNotes();
+    saveError = "";
+    say();
     keepUnsaved();
   }
   function keepUnsaved() {
@@ -989,7 +1014,7 @@ function project(s, first) {
     const notes = unsavedNotes(drafts.notes("note:"), server);
     writeUnsaved(
       unsavedKey,
-      picks.length || notes.length ? { picks, notes } : null
+      picks.length || notes.length || asks.length ? { picks, notes, asks } : null
     );
   }
   function restore(v, u) {
@@ -1001,6 +1026,7 @@ function project(s, first) {
       unsavedPicks.set(t, c);
     }
     for (const [t, text] of u.notes) drafts.restore(noteKey(t), text);
+    asks = u.asks;
     void flush();
   }
   function saveSoon() {
@@ -1032,50 +1058,59 @@ function project(s, first) {
   }
   function ask(c, words) {
     focus = c;
-    void enqueue(async () => {
-      const body = { thread: c.thread, text: words, answer: null };
-      const d = await s.api.post(`${base}/drafts`, body);
-      server.questions.set(c.thread, [
-        ...server.questions.get(c.thread) ?? [],
-        d
-      ]);
-      draw();
-    });
+    asks.push({ thread: c.thread, text: words });
+    void enqueue(saveChanges);
+    draw();
   }
   function sends() {
     return sendCount({
       picks: drafts.picks.size,
-      questions: [...server.questions.values()].flat().length,
+      questions: [...server.questions.values()].flat().length + asks.length,
       notes: [...drafts.notes("note:").values()]
     });
   }
   function send() {
+    refused = "";
     void flush();
-    void enqueue(async () => {
-      const r = await s.api.post(`${base}/send`);
-      const taken = takenBySend(server, drafts.picks, drafts.notes("note:"));
-      for (const t of taken.picks) drafts.picks.delete(t);
-      for (const t of taken.notes) drafts.take(`note:${t}`);
-      server = sortDrafts([], WORDS);
-      s.bar.setStatus(view?.title ?? "");
-      flashSent(r.sent);
-    });
+    void enqueue(
+      async () => {
+        if (saveError) return;
+        const r = await s.api.post(`${base}/send`);
+        const taken = takenBySend(server, drafts.picks, drafts.notes("note:"));
+        for (const t of taken.picks) drafts.picks.delete(t);
+        for (const t of taken.notes) drafts.take(`note:${t}`);
+        server = sortDrafts([], WORDS);
+        flashSent(r.sent);
+        draw();
+      },
+      (err) => {
+        refused = `Not sent: ${err.message}. Your drafts stay here.`;
+        say();
+      }
+    );
   }
   function flashSent(n) {
     const words = `${n} sent to the agent.`;
     s.bar.setStatus(words, { tone: "signal" });
-    setTimeout(() => {
-      if (!stopped) s.bar.setStatus(view?.title ?? "");
-    }, 4e3);
+    setTimeout(say, 4e3);
   }
   function discard() {
     unsavedPicks.clear();
+    asks = [];
+    saveError = "";
+    refused = "";
     writeUnsaved(unsavedKey, null);
     if (timer) clearTimeout(timer);
     timer = null;
     drafts.discard("note:");
     server = sortDrafts([], WORDS);
-    void enqueue(() => s.api.del(`${base}/drafts`));
+    void enqueue(
+      () => s.api.del(`${base}/drafts`),
+      (err) => {
+        refused = `Not discarded: ${err.message}.`;
+        say();
+      }
+    );
     draw();
   }
   columns.centre.addEventListener("input", (e) => {
@@ -1249,7 +1284,10 @@ function project(s, first) {
     const pill = (text, cls = "") => h5("span", { class: `kit-pill ${cls}` }, text);
     const sendable = questionsOf(
       threadOf(v, c.thread),
-      server.questions.get(c.thread) ?? [],
+      [
+        ...server.questions.get(c.thread) ?? [],
+        ...asks.filter((a) => a.thread === c.thread)
+      ],
       WORDS
     );
     const job = c.job;
@@ -1550,12 +1588,12 @@ function project(s, first) {
   }
   async function load() {
     const at = edits;
-    const settled = !busy && !timer;
+    const settled = !busy && !timer && !saveError;
     const v = await s.api.get(base);
     if (stopped) return;
     view = v;
-    s.bar.setStatus(v.title);
-    if (settled && at === edits && !busy && !timer) {
+    say();
+    if (settled && at === edits && !busy && !timer && !saveError) {
       adopt(v);
       const u = restoring;
       restoring = null;
@@ -1569,7 +1607,8 @@ function project(s, first) {
     stop() {
       stopped = true;
       stopping.abort();
-      if (drafts.dirty()) void flush();
+      if (drafts.dirty() || unsavedPicks.size || asks.length)
+        void flush().then(keepUnsaved);
     },
     changed(p) {
       if (p === id || p === 0) void load();

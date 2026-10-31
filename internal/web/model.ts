@@ -363,7 +363,7 @@ const SETTLED = ['answered', 'declined', 'failed', 'no_reply'];
 /** Which questions a card has out: held as drafts, or sent and not answered. */
 export function questionsOf(
   messages: Message[],
-  drafts: DraftView[],
+  drafts: Pick<DraftView, 'text'>[],
   words: string[],
 ): { sent: string[]; drafted: string[] } {
   return {

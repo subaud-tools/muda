@@ -7,7 +7,8 @@
 // note a moment after you stop typing, so a reload keeps both, and Send takes
 // them all together. The server holds the drafts; until the saves have settled,
 // this tab's own copy wins. What leaving the page finds unsaved waits in the
-// browser's storage, and is saved when the project next opens.
+// browser's storage, and is saved when the project next opens. A save that fails
+// keeps this tab's copy, says so and stops Send; the next save or Send tries again.
 
 import {
   buttons,
@@ -65,6 +66,13 @@ const SAVE_AFTER_MS = 500;
 interface Unsaved {
   picks: [number, string | null][];
   notes: [number, string][];
+  asks: Ask[];
+}
+
+/** A question asked on a card, not yet saved as a draft. */
+interface Ask {
+  thread: number;
+  text: string;
 }
 
 // Storage can be off or full; the page works without it, as it did before.
@@ -149,6 +157,10 @@ export function project(s: Shell, first: ProjectRoute): Page {
   let timer: ReturnType<typeof setTimeout> | null = null;
   // Picks this tab holds that the server doesn't yet, with the card to save each.
   const unsavedPicks = new Map<number, Card>();
+  let asks: Ask[] = [];
+  // The last save failed, or the last Send or Discard: the bar says so.
+  let saveError = '';
+  let refused = '';
   const unsavedKey = `muda:unsaved:${id}`;
   let restoring = readUnsaved(unsavedKey);
 
@@ -157,12 +169,28 @@ export function project(s: Shell, first: ProjectRoute): Page {
     return raw ? (JSON.parse(raw) as Answer) : null;
   };
 
-  function enqueue(fn: () => Promise<unknown>): Promise<unknown> {
+  /** The bar's line: what went wrong, or the project's title. */
+  function say(): void {
+    if (stopped) return;
+    const wrong = saveError || refused;
+    if (wrong) s.bar.setStatus(wrong, { tone: 'danger' });
+    else s.bar.setStatus(view?.title ?? '');
+  }
+
+  function saveFailed(err: Error): void {
+    saveError = `Not saved: ${err.message}. Your drafts stay here and nothing was sent; Send tries again.`;
+    say();
+  }
+
+  function enqueue(
+    fn: () => Promise<unknown>,
+    failed: (err: Error) => void = saveFailed,
+  ): Promise<unknown> {
     edits++;
     busy++;
     chain = chain
       .then(fn)
-      .catch((err: Error) => s.bar.setStatus(err.message, { tone: 'danger' }))
+      .catch(failed)
       .finally(() => {
         busy--;
         if (!busy && !timer) void load();
@@ -222,7 +250,19 @@ export function project(s: Shell, first: ProjectRoute): Page {
       await savePick(c);
       if (drafts.picks.get(String(t)) === raw) unsavedPicks.delete(t);
     }
+    while (asks.length) {
+      const { thread, text } = asks[0];
+      const body: DraftBody = { thread, text, answer: null };
+      const d = await s.api.post<DraftView>(`${base}/drafts`, body);
+      asks = asks.slice(1);
+      server.questions.set(thread, [
+        ...(server.questions.get(thread) ?? []),
+        d,
+      ]);
+    }
     await saveNotes();
+    saveError = '';
+    say();
     keepUnsaved();
   }
 
@@ -236,7 +276,9 @@ export function project(s: Shell, first: ProjectRoute): Page {
     const notes = unsavedNotes(drafts.notes('note:'), server);
     writeUnsaved(
       unsavedKey,
-      picks.length || notes.length ? { picks, notes } : null,
+      picks.length || notes.length || asks.length
+        ? { picks, notes, asks }
+        : null,
     );
   }
 
@@ -250,6 +292,7 @@ export function project(s: Shell, first: ProjectRoute): Page {
       unsavedPicks.set(t, c);
     }
     for (const [t, text] of u.notes) drafts.restore(noteKey(t), text);
+    asks = u.asks;
     void flush();
   }
 
@@ -285,57 +328,67 @@ export function project(s: Shell, first: ProjectRoute): Page {
 
   function ask(c: Card, words: string): void {
     focus = c;
-    void enqueue(async () => {
-      const body: DraftBody = { thread: c.thread, text: words, answer: null };
-      const d = await s.api.post<DraftView>(`${base}/drafts`, body);
-      server.questions.set(c.thread, [
-        ...(server.questions.get(c.thread) ?? []),
-        d,
-      ]);
-      draw();
-    });
+    asks.push({ thread: c.thread, text: words });
+    void enqueue(saveChanges);
+    draw();
   }
 
   function sends(): number {
     return sendCount({
       picks: drafts.picks.size,
-      questions: [...server.questions.values()].flat().length,
+      questions: [...server.questions.values()].flat().length + asks.length,
       notes: [...drafts.notes('note:').values()],
     });
   }
 
   function send(): void {
+    refused = '';
     void flush();
-    void enqueue(async () => {
-      // The queue holds every save back while this runs, so what the server has
-      // now is what goes. Anything else in this tab's copy stays a draft, and
-      // its own save, queued or on its timer, writes it after.
-      const r = await s.api.post<SendResult>(`${base}/send`);
-      const taken = takenBySend(server, drafts.picks, drafts.notes('note:'));
-      for (const t of taken.picks) drafts.picks.delete(t);
-      for (const t of taken.notes) drafts.take(`note:${t}`);
-      server = sortDrafts([], WORDS);
-      s.bar.setStatus(view?.title ?? '');
-      flashSent(r.sent);
-    });
+    void enqueue(
+      async () => {
+        // A save behind this failed: what's on the server isn't what you wrote.
+        if (saveError) return;
+        // The queue holds every save back while this runs, so what the server has
+        // now is what goes. Anything else in this tab's copy stays a draft, and
+        // its own save, queued or on its timer, writes it after.
+        const r = await s.api.post<SendResult>(`${base}/send`);
+        const taken = takenBySend(server, drafts.picks, drafts.notes('note:'));
+        for (const t of taken.picks) drafts.picks.delete(t);
+        for (const t of taken.notes) drafts.take(`note:${t}`);
+        server = sortDrafts([], WORDS);
+        flashSent(r.sent);
+        draw();
+      },
+      (err: Error) => {
+        refused = `Not sent: ${err.message}. Your drafts stay here.`;
+        say();
+      },
+    );
   }
 
   function flashSent(n: number): void {
     const words = `${n} sent to the agent.`;
     s.bar.setStatus(words, { tone: 'signal' });
-    setTimeout(() => {
-      if (!stopped) s.bar.setStatus(view?.title ?? '');
-    }, 4000);
+    setTimeout(say, 4000);
   }
 
   function discard(): void {
     unsavedPicks.clear();
+    asks = [];
+    saveError = '';
+    refused = '';
     writeUnsaved(unsavedKey, null);
     if (timer) clearTimeout(timer);
     timer = null;
     drafts.discard('note:');
     server = sortDrafts([], WORDS);
-    void enqueue(() => s.api.del(`${base}/drafts`));
+    void enqueue(
+      () => s.api.del(`${base}/drafts`),
+      (err: Error) => {
+        refused = `Not discarded: ${err.message}.`;
+        say();
+      },
+    );
     draw();
   }
 
@@ -543,7 +596,10 @@ export function project(s: Shell, first: ProjectRoute): Page {
       h('span', { class: `kit-pill ${cls}` }, text);
     const sendable = questionsOf(
       threadOf(v, c.thread),
-      server.questions.get(c.thread) ?? [],
+      [
+        ...(server.questions.get(c.thread) ?? []),
+        ...asks.filter((a) => a.thread === c.thread),
+      ],
       WORDS,
     );
     const job = c.job;
@@ -897,12 +953,12 @@ export function project(s: Shell, first: ProjectRoute): Page {
     // The server's drafts are taken only from a read that no save overlapped:
     // one fetched while a save was running can hold a pick the save replaced.
     const at = edits;
-    const settled = !busy && !timer;
+    const settled = !busy && !timer && !saveError;
     const v = await s.api.get<ProjectView>(base);
     if (stopped) return;
     view = v;
-    s.bar.setStatus(v.title);
-    if (settled && at === edits && !busy && !timer) {
+    say();
+    if (settled && at === edits && !busy && !timer && !saveError) {
       adopt(v);
       const u = restoring;
       restoring = null;
@@ -918,7 +974,8 @@ export function project(s: Shell, first: ProjectRoute): Page {
     stop() {
       stopped = true;
       stopping.abort();
-      if (drafts.dirty()) void flush();
+      if (drafts.dirty() || unsavedPicks.size || asks.length)
+        void flush().then(keepUnsaved);
     },
     changed(p) {
       if (p === id || p === 0) void load();

@@ -5,7 +5,9 @@
 // each of the four answers becomes a draft; a pick and a note stay drafts through
 // a reload until Send delivers them as one Send, which the agent status lists; a
 // second session opening the project takes its unanswered messages; no console
-// errors; nothing wider than the window. Screenshots go to $PROBE_OUT.
+// errors; nothing wider than the window. Then, once each, the ways drafts could
+// be lost: an edit during Send, a reload straight after typing, a failed save.
+// Screenshots go to $PROBE_OUT.
 //
 // KIT_BROWSER=required: no chromium is a failure. BROWSER SAFETY: headless, and
 // the serve is --no-open (serve-fixture.mjs).
@@ -578,11 +580,69 @@ async function typedThenReload(browser) {
   await d.close();
 }
 
+async function failedSave(browser) {
+  console.log('\n== a save that fails');
+  const d = await draftsPage(browser);
+  let failing = false;
+  let sends = 0;
+  await d.page.route('**/api/projects/*/drafts**', (route) =>
+    failing
+      ? route.fulfill({ status: 500, json: { error: 'disk full' } })
+      : route.continue(),
+  );
+  await d.page.route('**/send', (route) => {
+    sends++;
+    return route.continue();
+  });
+  await d.note.fill('This one saved.');
+  await until(async () => (await d.view()).drafts.length === 1);
+  failing = true;
+  await d.card.locator('[data-option="approve"]').click();
+  await sleep(400);
+  const said = () => d.page.locator('.kit-status').textContent();
+  const held = async () => ({
+    said: /disk full/.test(await said()),
+    pressed: await d.pressed('approve'),
+    sends,
+    drafts: (await d.view()).drafts.length,
+  });
+  const after = await held();
+  await d.page.getByRole('button', { name: /^Send \d/ }).click();
+  await sleep(400);
+  const refused = await held();
+  await d.page.reload();
+  await d.card.waitFor();
+  await sleep(400);
+  const reloaded = await held();
+  failing = false;
+  await d.page
+    .getByRole('button', { name: 'Send 2' })
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await until(async () => (await d.view()).messages.length === 2);
+  const went = (await d.view()).messages.map((m) => m.text).sort();
+  const want = { said: true, pressed: 'true', sends: 0, drafts: 1 };
+  const got = { after, refused, reloaded, went };
+  check(
+    'a failed save stops Send, says so and keeps the pick until it is saved and sent',
+    JSON.stringify(got) ===
+      JSON.stringify({
+        after: want,
+        refused: want,
+        reloaded: want,
+        went: ['Approve', 'This one saved.'],
+      }),
+    JSON.stringify(got),
+  );
+  await d.close();
+}
+
 run(async () => {
   const browser = await launchOrSkip();
   if (!browser) return;
   for (const width of [1280, 390]) await atWidth(browser, width);
   await editsDuringSend(browser);
   await typedThenReload(browser);
+  await failedSave(browser);
   console.log(`\nscreenshots: ${out}`);
 });
