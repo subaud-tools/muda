@@ -33,7 +33,7 @@ The skills come with the binary. Install them for your agent:
 muda skills install --agent claude --scope user
 ```
 
-Agents are `claude`, `pi` and `codex`. Scopes are `user` (the default) and
+Agents are `claude` and `pi`. Scopes are `user` (the default) and
 `project` (the Git root of the current repository).
 
 Claude Code has no muda plugin: `muda skills install --agent claude` installs

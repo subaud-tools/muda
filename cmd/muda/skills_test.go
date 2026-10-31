@@ -162,7 +162,7 @@ func TestSkillsActualApp(t *testing.T) {
 	if _, e := os.Stat(filepath.Join(sub, ".pi")); !os.IsNotExist(e) {
 		t.Fatal("ambient cwd used")
 	}
-	for _, a := range [][]string{{"skills", "install", "--agent", "invalid"}, {"skills", "install", "--scope", "invalid"}, {"skills", "install", "extra"}} {
+	for _, a := range [][]string{{"skills", "install", "--agent", "invalid"}, {"skills", "install", "--agent", "codex"}, {"skills", "install", "--scope", "invalid"}, {"skills", "install", "extra"}} {
 		if c := app.Dispatch(a, &out, &err); c != 2 {
 			t.Fatalf("%v code=%d", a, c)
 		}
@@ -864,7 +864,7 @@ func TestReadmeSkillsStatus(t *testing.T) {
 		t.Fatal(e)
 	}
 	text := norm(string(b))
-	for _, stale := range []string{"Phase A is partial", "only the entry skill", "not yet clean", "private development", "private and unreleased", "copier", "muda check", "/plugin marketplace add subaud-tools/muda"} {
+	for _, stale := range []string{"Phase A is partial", "only the entry skill", "not yet clean", "private development", "private and unreleased", "copier", "muda check", "/plugin marketplace add subaud-tools/muda", "codex"} {
 		if strings.Contains(text, stale) {
 			t.Error("stale README text:", stale)
 		}
@@ -882,7 +882,7 @@ func TestReadmeSkillsStatus(t *testing.T) {
 		t.Fatal(e)
 	}
 	text = norm(string(b))
-	for _, stale := range []string{"planned for Task 8", "No skills or installer", "shipped yet", "Claude Code plugin"} {
+	for _, stale := range []string{"planned for Task 8", "No skills or installer", "shipped yet", "Claude Code plugin", "codex"} {
 		if strings.Contains(text, stale) {
 			t.Error("stale skills/README.md text:", stale)
 		}
