@@ -1,0 +1,491 @@
+{
+ "projects": [
+  {
+   "title": "Family tools",
+   "groups": [
+    {
+     "kind": "repo",
+     "key": "/work/galley",
+     "label": "schuettc/galley"
+    },
+    {
+     "kind": "repo",
+     "key": "/work/muster",
+     "label": "schuettc/muster"
+    },
+    {
+     "kind": "account",
+     "key": "Dev account",
+     "label": "Dev account"
+    }
+   ],
+   "post": {
+    "working": "reading PR #39's first run",
+    "jobs": [
+     {
+      "id": "deploy",
+      "label": "Deployments",
+      "stages": [
+       {
+        "id": "baseline",
+        "label": "Baseline",
+        "state": "done"
+       },
+       {
+        "id": "findings",
+        "label": "Findings",
+        "state": "now",
+        "count": "3 to answer"
+       },
+       {
+        "id": "plan",
+        "label": "Fix plan",
+        "count": "1 to approve"
+       },
+       {
+        "id": "verify",
+        "label": "Verify",
+        "count": "1 in PR"
+       }
+      ]
+     },
+     {
+      "id": "cost",
+      "label": "Cost",
+      "stages": [
+       {
+        "id": "scope",
+        "label": "Scope",
+        "state": "done"
+       },
+       {
+        "id": "findings",
+        "label": "Findings",
+        "state": "now",
+        "count": "1 to answer"
+       },
+       {
+        "id": "changes",
+        "label": "Changes"
+       },
+       {
+        "id": "verify",
+        "label": "Verify on the bill"
+       }
+      ]
+     }
+    ],
+    "cards": [
+     {
+      "job": "deploy",
+      "group": "/work/galley",
+      "stage": "baseline",
+      "id": "baseline",
+      "title": "Baseline: 29 Sep to 4 Oct",
+      "kind": "baseline",
+      "evidence": [
+       {
+        "kind": "run",
+        "ref": "ci.yml · 35 runs",
+        "text": "p50 3m48s, p90 4m30s; 7 failures, 2 reruns",
+        "url": "https://github.com/schuettc/galley/actions/workflows/ci.yml"
+       },
+       {
+        "kind": "run",
+        "ref": "release.yml · 5 runs",
+        "text": "p50 1m28s, p90 2m53s"
+       }
+      ],
+      "recommendation": "Keep these roles: each workflow as muda found it from its triggers.",
+      "answers": {
+       "kind": "rows",
+       "rows": [
+        {
+         "id": ".github/workflows/ci.yml",
+         "label": "ci.yml",
+         "chosen": "gate",
+         "options": [
+          {
+           "id": "gate",
+           "label": "Gate"
+          },
+          {
+           "id": "deploy",
+           "label": "Deploy"
+          },
+          {
+           "id": "other",
+           "label": "Other"
+          }
+         ]
+        },
+        {
+         "id": ".github/workflows/release.yml",
+         "label": "release.yml",
+         "chosen": "deploy",
+         "options": [
+          {
+           "id": "gate",
+           "label": "Gate"
+          },
+          {
+           "id": "deploy",
+           "label": "Deploy"
+          },
+          {
+           "id": "other",
+           "label": "Other"
+          }
+         ]
+        },
+        {
+         "id": ".github/workflows/version-guard.yml",
+         "label": "version-guard.yml",
+         "chosen": "gate",
+         "options": [
+          {
+           "id": "gate",
+           "label": "Gate"
+          },
+          {
+           "id": "deploy",
+           "label": "Deploy"
+          },
+          {
+           "id": "other",
+           "label": "Other"
+          }
+         ]
+        },
+        {
+         "id": "dynamic/dependabot/dependabot-updates",
+         "label": "dependabot-updates",
+         "options": [
+          {
+           "id": "gate",
+           "label": "Gate"
+          },
+          {
+           "id": "deploy",
+           "label": "Deploy"
+          },
+          {
+           "id": "other",
+           "label": "Other"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "job": "deploy",
+      "group": "/work/muster",
+      "stage": "baseline",
+      "id": "baseline",
+      "title": "Baseline: 29 Sep to 1 Oct",
+      "kind": "baseline",
+      "decided": "You confirmed this baseline on 1 Oct.",
+      "evidence": [
+       {
+        "kind": "run",
+        "ref": "ci.yml · 22 runs",
+        "text": "p50 2m10s, p90 2m41s"
+       }
+      ]
+     },
+     {
+      "job": "deploy",
+      "group": "/work/galley",
+      "stage": "findings",
+      "id": "order",
+      "title": "Which finding first?",
+      "kind": "call",
+      "recommendation": "Pin the tools before the cache: the pins are one line each and carry no risk to the gate.",
+      "answers": {
+       "kind": "order",
+       "rows": [
+        {
+         "id": "F-002",
+         "label": "F-002 Floating Node version"
+        },
+        {
+         "id": "F-003",
+         "label": "F-003 Floating cache action"
+        },
+        {
+         "id": "F-001",
+         "label": "F-001 Cold Go cache"
+        }
+       ]
+      }
+     },
+     {
+      "job": "deploy",
+      "group": "/work/galley",
+      "stage": "findings",
+      "id": "F-002",
+      "title": "Floating Node version in both jobs",
+      "kind": "finding",
+      "class": "W2",
+      "basis": "measured",
+      "evidence": [
+       {
+        "kind": "file",
+        "ref": "ci.yml:43",
+        "text": "extra: node-version: 22 (major only)",
+        "url": "https://github.com/schuettc/galley/blob/main/.github/workflows/ci.yml#L43"
+       },
+       {
+        "kind": "file",
+        "ref": "ci.yml:96",
+        "text": "gates: node-version: 22 (major only, repeated)",
+        "url": "https://github.com/schuettc/galley/blob/main/.github/workflows/ci.yml#L96"
+       },
+       {
+        "kind": "job",
+        "ref": "job 109601767295",
+        "text": "resolved 'Found in cache @ /opt/hostedtoolcache/node/22.23.2/x64' (2026-09-29)",
+        "url": "https://github.com/schuettc/galley/actions/runs/36624791458/job/109601767295"
+       },
+       {
+        "kind": "job",
+        "ref": "job 111116024055",
+        "text": "resolved 'Found in cache @ /opt/hostedtoolcache/node/22.23.3/x64' (2026-10-03): two patches in one window",
+        "url": "https://github.com/schuettc/galley/actions/runs/37092637947/job/111116024055"
+       }
+      ],
+      "recommendation": "Approve: one exact version source read by both setup-node steps. No time saving; it is about getting the same result twice.",
+      "answers": {
+       "kind": "buttons",
+       "options": [
+        {
+         "id": "approve",
+         "label": "Approve"
+        },
+        {
+         "id": "exempt",
+         "label": "Exempt",
+         "detail": "Keep it, with a reason and a review date"
+        },
+        {
+         "id": "later",
+         "label": "Later"
+        }
+       ]
+      }
+     },
+     {
+      "job": "deploy",
+      "group": "/work/galley",
+      "stage": "findings",
+      "id": "F-003",
+      "title": "Floating cache action in both jobs",
+      "kind": "finding",
+      "class": "W2",
+      "basis": "measured",
+      "evidence": [
+       {
+        "kind": "file",
+        "ref": "ci.yml:52",
+        "text": "extra: uses: actions/cache@v6 (floating major tag)",
+        "url": "https://github.com/schuettc/galley/blob/main/.github/workflows/ci.yml#L52"
+       },
+       {
+        "kind": "file",
+        "ref": "ci.yml:103",
+        "text": "gates: uses: actions/cache@v6 (floating major tag)",
+        "url": "https://github.com/schuettc/galley/blob/main/.github/workflows/ci.yml#L103"
+       }
+      ],
+      "recommendation": "Exempt it for now: dependabot has no refresh path yet, so a pin would go stale.",
+      "answers": {
+       "kind": "fields",
+       "fields": [
+        {
+         "id": "reason",
+         "label": "Reason",
+         "type": "long"
+        },
+        {
+         "id": "review-by",
+         "label": "Review by",
+         "type": "date"
+        }
+       ]
+      }
+     },
+     {
+      "job": "deploy",
+      "group": "/work/muster",
+      "stage": "findings",
+      "id": "F-002",
+      "title": "Duplicate targets in the justfile",
+      "kind": "finding",
+      "class": "W1",
+      "basis": "suspected",
+      "evidence": [
+       {
+        "kind": "file",
+        "ref": "justfile:12",
+        "text": "build and dist run the same cross-build"
+       }
+      ],
+      "recommendation": "Approve, then measure on the next ten runs.",
+      "answers": {
+       "kind": "buttons",
+       "options": [
+        {
+         "id": "approve",
+         "label": "Approve"
+        },
+        {
+         "id": "exempt",
+         "label": "Exempt"
+        }
+       ]
+      }
+     },
+     {
+      "job": "deploy",
+      "group": "/work/galley",
+      "stage": "plan",
+      "id": "plan-F-001",
+      "title": "Fix plan: F-001 Cold Go cache",
+      "kind": "plan",
+      "class": "W4",
+      "basis": "suspected",
+      "decided": "You approved finding F-001 on 4 Oct.",
+      "evidence": [
+       {
+        "kind": "job",
+        "ref": "job 111116024090",
+        "text": "gate restores 'Cache Size: ~0 MB', then 18 'go: downloading' lines; go-ci 3m34s",
+        "url": "https://github.com/schuettc/galley/actions/runs/37092637947/job/111116024090"
+       },
+       {
+        "kind": "job",
+        "ref": "job 109601767295",
+        "text": "extra runs no Go, yet saves the shared setup-go key",
+        "url": "https://github.com/schuettc/galley/actions/runs/36624791458/job/109601767295"
+       }
+      ],
+      "recommendation": "Set cache: false on extra and delete the near-empty entries. No saving is claimed until go-ci p50 over ten runs beats 3m25s.",
+      "answers": {
+       "kind": "buttons",
+       "options": [
+        {
+         "id": "approve",
+         "label": "Approve plan"
+        },
+        {
+         "id": "changes",
+         "label": "Needs changes"
+        }
+       ]
+      }
+     },
+     {
+      "job": "deploy",
+      "group": "/work/galley",
+      "stage": "verify",
+      "id": "verify-F-001",
+      "title": "Verify: F-001 after PR #39",
+      "kind": "verdict",
+      "class": "W4",
+      "basis": "measured",
+      "decided": "You approved the plan and merged PR #39.",
+      "evidence": [
+       {
+        "kind": "run",
+        "ref": "run 37210951645",
+        "text": "muda compare: VERIFIED. 17 ok, 0 cached, gate list identical",
+        "url": "https://github.com/schuettc/galley/actions/runs/37210951645"
+       }
+      ],
+      "answers": {
+       "kind": "buttons",
+       "options": [
+        {
+         "id": "fixed",
+         "label": "Fixed"
+        },
+        {
+         "id": "reopen",
+         "label": "Reopen"
+        },
+        {
+         "id": "in-pr",
+         "label": "Stays in the PR"
+        }
+       ]
+      }
+     },
+     {
+      "job": "cost",
+      "group": "Dev account",
+      "stage": "scope",
+      "id": "scope",
+      "title": "Scope: one account, 30 days",
+      "kind": "baseline",
+      "decided": "You agreed the scope on 12 Oct.",
+      "evidence": [
+       {
+        "kind": "bill_line",
+        "ref": "Sep bill, Dev account",
+        "text": "The whole account, by service"
+       }
+      ]
+     },
+     {
+      "job": "cost",
+      "group": "Dev account",
+      "stage": "findings",
+      "id": "A7",
+      "title": "Recurring dev schedules",
+      "kind": "finding",
+      "class": "A7",
+      "basis": "measured",
+      "evidence": [
+       {
+        "kind": "bill_line",
+        "ref": "Sep bill, compute, dev",
+        "text": "About $10 to $20 a month for schedules no one reads"
+       }
+      ],
+      "recommendation": "Turn the schedules off in code, so the next deploy keeps it.",
+      "answers": {
+       "kind": "buttons",
+       "options": [
+        {
+         "id": "approve",
+         "label": "Approve change"
+        },
+        {
+         "id": "keep",
+         "label": "Keep it"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": "Client delivery",
+   "groups": [
+    {
+     "kind": "repo",
+     "key": "/work/client-api",
+     "label": "acme/client-api"
+    },
+    {
+     "kind": "repo",
+     "key": "/work/client-web",
+     "label": "acme/client-web"
+    }
+   ],
+   "post": {}
+  }
+ ]
+}
