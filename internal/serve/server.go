@@ -46,6 +46,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/agent/post", s.agentPost)
 	mux.HandleFunc("POST /api/agent/reply", s.agentReply)
 	mux.HandleFunc("GET /api/agent/status", s.agentStatus)
+	s.pageRoutes(mux)
 	return mux
 }
 

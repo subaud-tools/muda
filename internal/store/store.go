@@ -599,3 +599,14 @@ func (s *Store) CardOfThread(ctx context.Context, thread int64) (Card, error) {
 
 // ErrNoCard is a thread with no card.
 var ErrNoCard = errors.New("no such card")
+
+// Answer is what the user picked on a card, kept with the message that carries
+// it: Choice for buttons, Rows for a choice per row, Order for an order, and
+// Fields for fields.
+type Answer struct {
+	Kind   string            `json:"kind"`
+	Choice string            `json:"choice,omitempty"`
+	Rows   map[string]string `json:"rows,omitempty"`
+	Order  []string          `json:"order,omitempty"`
+	Fields map[string]string `json:"fields,omitempty"`
+}
