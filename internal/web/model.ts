@@ -348,6 +348,16 @@ export function takenBySend(
   };
 }
 
+/** The notes a tab holds that differ from the server's, by thread. */
+export function unsavedNotes(
+  notes: Map<string, string>,
+  server: SortedDrafts,
+): [number, string][] {
+  return [...notes]
+    .filter(([t, text]) => text.trim() !== (server.notes.get(+t)?.text ?? ''))
+    .map(([t, text]) => [+t, text]);
+}
+
 const SETTLED = ['answered', 'declined', 'failed', 'no_reply'];
 
 /** Which questions a card has out: held as drafts, or sent and not answered. */

@@ -6,7 +6,8 @@
 // What you say is a draft until Send: a pick is saved as soon as it is made, a
 // note a moment after you stop typing, so a reload keeps both, and Send takes
 // them all together. The server holds the drafts; until the saves have settled,
-// this tab's own copy wins.
+// this tab's own copy wins. What leaving the page finds unsaved waits in the
+// browser's storage, and is saved when the project next opens.
 
 import {
   buttons,
@@ -38,6 +39,7 @@ import {
   sortDrafts,
   stageCards,
   takenBySend,
+  unsavedNotes,
   threadOf,
   waitsOf,
   type Route,
@@ -58,6 +60,30 @@ type ProjectRoute = Extract<Route, { page: 'project' }>;
 
 const WORDS = Object.values(QUESTIONS);
 const SAVE_AFTER_MS = 500;
+
+/** What left a project's page unsaved: pick (null: taken back) and note by thread. */
+interface Unsaved {
+  picks: [number, string | null][];
+  notes: [number, string][];
+}
+
+// Storage can be off or full; the page works without it, as it did before.
+function readUnsaved(key: string): Unsaved | null {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? 'null') as Unsaved | null;
+  } catch {
+    return null;
+  }
+}
+
+function writeUnsaved(key: string, u: Unsaved | null): void {
+  try {
+    if (u) localStorage.setItem(key, JSON.stringify(u));
+    else localStorage.removeItem(key);
+  } catch {
+    // As above.
+  }
+}
 
 /** Replace el's content, keeping the focus on the control that had it. */
 function put(el: HTMLElement, ...nodes: Node[]): void {
@@ -121,6 +147,10 @@ export function project(s: Shell, first: ProjectRoute): Page {
   let busy = 0;
   let edits = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  // Picks this tab holds that the server doesn't yet, with the card to save each.
+  const unsavedPicks = new Map<number, Card>();
+  const unsavedKey = `muda:unsaved:${id}`;
+  let restoring = readUnsaved(unsavedKey);
 
   const pickOf = (thread: number): Answer | null => {
     const raw = drafts.picks.get(String(thread));
@@ -185,8 +215,45 @@ export function project(s: Shell, first: ProjectRoute): Page {
     }
   }
 
+  /** Save every pick and note that differs from the server's. */
+  async function saveChanges(): Promise<void> {
+    for (const [t, c] of [...unsavedPicks]) {
+      const raw = drafts.picks.get(String(t));
+      await savePick(c);
+      if (drafts.picks.get(String(t)) === raw) unsavedPicks.delete(t);
+    }
+    await saveNotes();
+    keepUnsaved();
+  }
+
+  /** Put what isn't saved where the next page load finds it. */
+  function keepUnsaved(): void {
+    if (restoring) return;
+    const picks = [...unsavedPicks.keys()].map((t): [number, string | null] => [
+      t,
+      drafts.picks.get(String(t)) ?? null,
+    ]);
+    const notes = unsavedNotes(drafts.notes('note:'), server);
+    writeUnsaved(
+      unsavedKey,
+      picks.length || notes.length ? { picks, notes } : null,
+    );
+  }
+
+  /** Lay what the last page load left unsaved over the server's drafts. */
+  function restore(v: ProjectView, u: Unsaved): void {
+    for (const [t, raw] of u.picks) {
+      const c = v.cards?.find((x) => x.thread === t);
+      if (!c) continue;
+      if (raw) drafts.picks.set(String(t), raw);
+      else drafts.picks.delete(String(t));
+      unsavedPicks.set(t, c);
+    }
+    for (const [t, text] of u.notes) drafts.restore(noteKey(t), text);
+    void flush();
+  }
+
   // Typing, in a note or a field: saved a moment after the keys stop.
-  const typedPicks = new Map<number, Card>();
   function saveSoon(): void {
     edits++;
     if (timer) clearTimeout(timer);
@@ -198,12 +265,7 @@ export function project(s: Shell, first: ProjectRoute): Page {
   function flush(): Promise<unknown> {
     if (timer) clearTimeout(timer);
     timer = null;
-    const cards = [...typedPicks.values()];
-    typedPicks.clear();
-    return enqueue(async () => {
-      for (const c of cards) await savePick(c);
-      await saveNotes();
-    });
+    return enqueue(saveChanges);
   }
 
   function setPick(c: Card, a: Answer | null, typing = false): void {
@@ -211,14 +273,13 @@ export function project(s: Shell, first: ProjectRoute): Page {
     const key = String(c.thread);
     if (a) drafts.picks.set(key, JSON.stringify(a));
     else drafts.picks.delete(key);
+    unsavedPicks.set(c.thread, c);
     if (typing) {
-      typedPicks.set(c.thread, c);
       saveSoon();
       drawFoot();
       return;
     }
-    typedPicks.delete(c.thread);
-    void enqueue(() => savePick(c));
+    void enqueue(saveChanges);
     draw();
   }
 
@@ -268,7 +329,8 @@ export function project(s: Shell, first: ProjectRoute): Page {
   }
 
   function discard(): void {
-    typedPicks.clear();
+    unsavedPicks.clear();
+    writeUnsaved(unsavedKey, null);
     if (timer) clearTimeout(timer);
     timer = null;
     drafts.discard('note:');
@@ -840,9 +902,16 @@ export function project(s: Shell, first: ProjectRoute): Page {
     if (stopped) return;
     view = v;
     s.bar.setStatus(v.title);
-    if (settled && at === edits && !busy && !timer) adopt(v);
+    if (settled && at === edits && !busy && !timer) {
+      adopt(v);
+      const u = restoring;
+      restoring = null;
+      if (u) restore(v, u);
+    }
     draw();
   }
+
+  addEventListener('pagehide', keepUnsaved, { signal });
 
   void load();
   return {

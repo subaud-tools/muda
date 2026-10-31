@@ -215,6 +215,9 @@ function takenBySend(sent, picks, notes) {
     notes: [...notes].filter(([t, text]) => text.trim() === sent.notes.get(+t)?.text).map(([t]) => t)
   };
 }
+function unsavedNotes(notes, server) {
+  return [...notes].filter(([t, text]) => text.trim() !== (server.notes.get(+t)?.text ?? "")).map(([t, text]) => [+t, text]);
+}
 var SETTLED = ["answered", "declined", "failed", "no_reply"];
 function questionsOf(messages, drafts, words) {
   return {
@@ -844,6 +847,20 @@ function answerControls(a, s) {
 // project.ts
 var WORDS = Object.values(QUESTIONS);
 var SAVE_AFTER_MS = 500;
+function readUnsaved(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "null");
+  } catch {
+    return null;
+  }
+}
+function writeUnsaved(key, u) {
+  try {
+    if (u) localStorage.setItem(key, JSON.stringify(u));
+    else localStorage.removeItem(key);
+  } catch {
+  }
+}
 function put(el, ...nodes) {
   const a = document.activeElement;
   const name = a?.dataset?.focus ?? a?.dataset?.draft;
@@ -899,6 +916,9 @@ function project(s, first) {
   let busy = 0;
   let edits = 0;
   let timer = null;
+  const unsavedPicks = /* @__PURE__ */ new Map();
+  const unsavedKey = `muda:unsaved:${id}`;
+  let restoring = readUnsaved(unsavedKey);
   const pickOf = (thread2) => {
     const raw = drafts.picks.get(String(thread2));
     return raw ? JSON.parse(raw) : null;
@@ -951,7 +971,38 @@ function project(s, first) {
       }
     }
   }
-  const typedPicks = /* @__PURE__ */ new Map();
+  async function saveChanges() {
+    for (const [t, c] of [...unsavedPicks]) {
+      const raw = drafts.picks.get(String(t));
+      await savePick(c);
+      if (drafts.picks.get(String(t)) === raw) unsavedPicks.delete(t);
+    }
+    await saveNotes();
+    keepUnsaved();
+  }
+  function keepUnsaved() {
+    if (restoring) return;
+    const picks = [...unsavedPicks.keys()].map((t) => [
+      t,
+      drafts.picks.get(String(t)) ?? null
+    ]);
+    const notes = unsavedNotes(drafts.notes("note:"), server);
+    writeUnsaved(
+      unsavedKey,
+      picks.length || notes.length ? { picks, notes } : null
+    );
+  }
+  function restore(v, u) {
+    for (const [t, raw] of u.picks) {
+      const c = v.cards?.find((x) => x.thread === t);
+      if (!c) continue;
+      if (raw) drafts.picks.set(String(t), raw);
+      else drafts.picks.delete(String(t));
+      unsavedPicks.set(t, c);
+    }
+    for (const [t, text] of u.notes) drafts.restore(noteKey(t), text);
+    void flush();
+  }
   function saveSoon() {
     edits++;
     if (timer) clearTimeout(timer);
@@ -963,26 +1014,20 @@ function project(s, first) {
   function flush() {
     if (timer) clearTimeout(timer);
     timer = null;
-    const cards = [...typedPicks.values()];
-    typedPicks.clear();
-    return enqueue(async () => {
-      for (const c of cards) await savePick(c);
-      await saveNotes();
-    });
+    return enqueue(saveChanges);
   }
   function setPick(c, a, typing = false) {
     focus = c;
     const key = String(c.thread);
     if (a) drafts.picks.set(key, JSON.stringify(a));
     else drafts.picks.delete(key);
+    unsavedPicks.set(c.thread, c);
     if (typing) {
-      typedPicks.set(c.thread, c);
       saveSoon();
       drawFoot();
       return;
     }
-    typedPicks.delete(c.thread);
-    void enqueue(() => savePick(c));
+    void enqueue(saveChanges);
     draw();
   }
   function ask(c, words) {
@@ -1024,7 +1069,8 @@ function project(s, first) {
     }, 4e3);
   }
   function discard() {
-    typedPicks.clear();
+    unsavedPicks.clear();
+    writeUnsaved(unsavedKey, null);
     if (timer) clearTimeout(timer);
     timer = null;
     drafts.discard("note:");
@@ -1509,9 +1555,15 @@ function project(s, first) {
     if (stopped) return;
     view = v;
     s.bar.setStatus(v.title);
-    if (settled && at === edits && !busy && !timer) adopt(v);
+    if (settled && at === edits && !busy && !timer) {
+      adopt(v);
+      const u = restoring;
+      restoring = null;
+      if (u) restore(v, u);
+    }
     draw();
   }
+  addEventListener("pagehide", keepUnsaved, { signal });
   void load();
   return {
     stop() {

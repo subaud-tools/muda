@@ -540,10 +540,49 @@ async function editsDuringSend(browser) {
   await d.close();
 }
 
+async function typedThenReload(browser) {
+  console.log('\n== a reload straight after typing');
+  const d = await draftsPage(browser);
+  const stage = d.page.locator('[data-stage-page="findings"]');
+  await d.page.evaluate((h) => {
+    location.hash = h;
+  }, `#/p/${d.family}/j/deploy/s/findings`);
+  await stage.waitFor();
+  const note = stage
+    .locator('.kit-card[data-card$="/F-002"] textarea.kit-draft')
+    .first();
+  const reason = () => d.page.locator('[data-field="reason"]').first();
+  await note.fill('Typed just before the reload.');
+  await reason().fill('Also just before.');
+  await d.page.reload();
+  await stage.waitFor();
+  await until(async () => (await d.view()).drafts.length === 2);
+  await sleep(700);
+  const got = {
+    note: await note.inputValue(),
+    reason: await reason().inputValue(),
+    saved: (await d.view()).drafts
+      .map((x) => x.answer?.fields?.reason ?? x.text)
+      .sort(),
+  };
+  check(
+    'a reload straight after typing keeps the note and the field, and saves them',
+    JSON.stringify(got) ===
+      JSON.stringify({
+        note: 'Typed just before the reload.',
+        reason: 'Also just before.',
+        saved: ['Also just before.', 'Typed just before the reload.'],
+      }),
+    JSON.stringify(got),
+  );
+  await d.close();
+}
+
 run(async () => {
   const browser = await launchOrSkip();
   if (!browser) return;
   for (const width of [1280, 390]) await atWidth(browser, width);
   await editsDuringSend(browser);
+  await typedThenReload(browser);
   console.log(`\nscreenshots: ${out}`);
 });

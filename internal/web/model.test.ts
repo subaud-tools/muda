@@ -18,6 +18,7 @@ import {
   sendCount,
   sortDrafts,
   takenBySend,
+  unsavedNotes,
   stageCards,
   statusItems,
   threadOf,
@@ -428,6 +429,32 @@ test('Send takes only what still reads as it went', () => {
     ]),
   );
   assert.deepEqual(out, { picks: ['1'], notes: ['1'] });
+});
+
+test('a note is unsaved while it differs from the server', () => {
+  const server = sortDrafts(
+    [
+      draft({ id: 1, thread: 1, text: 'saved' }),
+      draft({ id: 2, thread: 2, text: 'saved' }),
+      draft({ id: 3, thread: 3, text: 'saved' }),
+    ],
+    [],
+  );
+  const out = unsavedNotes(
+    new Map([
+      ['1', 'saved '],
+      ['2', 'saved, and more'],
+      ['3', ''],
+      ['4', 'new'],
+      ['5', '  '],
+    ]),
+    server,
+  );
+  assert.deepEqual(out, [
+    [2, 'saved, and more'],
+    [3, ''],
+    [4, 'new'],
+  ]);
 });
 
 test('a question reads asked while it is a draft or waits on an answer', () => {
