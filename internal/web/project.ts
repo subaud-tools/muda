@@ -661,7 +661,9 @@ export function project(s: Shell, first: ProjectRoute): Page {
             { 'data-part': 'answers', 'data-kind': c.answers.kind },
             h('div', { class: 'kit-label' }, 'Your answer'),
             answerControls(c.answers, {
-              answer,
+              get answer() {
+                return pickOf(c.thread);
+              },
               key: `answer:${c.thread}`,
               set: (a, typing) => setPick(c, a, typing),
             }),

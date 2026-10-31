@@ -6,7 +6,8 @@
 // a reload until Send delivers them as one Send, which the agent status lists; a
 // second session opening the project takes its unanswered messages; no console
 // errors; nothing wider than the window. Then, once each, the ways drafts could
-// be lost: an edit during Send, a reload straight after typing, a failed save.
+// be lost: an edit during Send, a reload straight after typing, a second pick
+// before the redraw, a failed save.
 // Screenshots go to $PROBE_OUT.
 //
 // KIT_BROWSER=required: no chromium is a failure. BROWSER SAFETY: headless, and
@@ -580,6 +581,41 @@ async function typedThenReload(browser) {
   await d.close();
 }
 
+// A click in the moment after another, before the page has redrawn from it (a
+// redraw waits out a press), so the buttons on the page are still the old ones.
+async function pickBeforeRedraw(browser) {
+  console.log('\n== a second pick before the redraw');
+  const d = await draftsPage(browser);
+  await d.card.locator('[data-option="approve"]').click();
+  await until(async () => (await d.view()).drafts.length === 1);
+  await d.page.reload();
+  await d.card.waitFor();
+  await until(async () => (await d.pressed('approve')) === 'true');
+  await d.page.evaluate(() => {
+    for (const option of ['exempt', 'approve']) {
+      const b = document.querySelector(
+        `.kit-card[data-card$="/F-002"] [data-option="${option}"]`,
+      );
+      for (const ev of ['pointerdown', 'pointerup'])
+        b.dispatchEvent(new PointerEvent(ev, { bubbles: true }));
+      b.click();
+    }
+  });
+  await until(async () => (await d.pressed('approve')) === 'true');
+  await sleep(700);
+  const got = {
+    drafts: (await d.view()).drafts.map((x) => x.answer?.choice),
+    pressed: await d.pressed('approve'),
+  };
+  check(
+    'a second pick made before the redraw replaces the first, not takes it back',
+    JSON.stringify(got) ===
+      JSON.stringify({ drafts: ['approve'], pressed: 'true' }),
+    JSON.stringify(got),
+  );
+  await d.close();
+}
+
 async function failedSave(browser) {
   console.log('\n== a save that fails');
   const d = await draftsPage(browser);
@@ -643,6 +679,7 @@ run(async () => {
   for (const width of [1280, 390]) await atWidth(browser, width);
   await editsDuringSend(browser);
   await typedThenReload(browser);
+  await pickBeforeRedraw(browser);
   await failedSave(browser);
   console.log(`\nscreenshots: ${out}`);
 });

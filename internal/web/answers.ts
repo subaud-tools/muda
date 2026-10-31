@@ -33,7 +33,14 @@ function buttonsKind(a: Answers, s: AnswerSink): HTMLElement {
             'data-option': o.id,
             'data-focus': `${s.key}:${o.id}`,
             'aria-pressed': String(on),
-            onclick: () => s.set(on ? null : { kind: 'buttons', choice: o.id }),
+            // Read when clicked: a redraw waits out a press, so what was held
+            // when these buttons were drawn may not be what is held now.
+            onclick: () =>
+              s.set(
+                s.answer?.choice === o.id
+                  ? null
+                  : { kind: 'buttons', choice: o.id },
+              ),
           },
           o.label,
         );
