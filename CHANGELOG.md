@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3
+
+- `muda_open` puts the project's page in the session's own Chrome window beside its terminal when it has one, on tools-common 0.46.0. Otherwise it reuses or opens a tab as before. Its answer's `tab` says which: `window`, `reused` or `opened`.
+- `muda serve` closes its database as it stops, before its entry goes, so a restart never opens the database under a serve still closing it.
+
 ## 0.7.2
 
 - The page wears muda's family colours, olive, and the muda.tools mark as its favicon.
