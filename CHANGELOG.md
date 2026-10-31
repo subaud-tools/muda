@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1
+
+- The page: changing your answer on a card quickly no longer takes it back. A click made while the page was about to redraw read the answer as it was drawn, so it removed the answer instead of replacing it.
+- The page: redrawing over a field you hadn't left no longer stops with an error.
+
 ## 0.7.0
 
 - The loop skills (muda, muda-measure, muda-diagnose, muda-fix, muda-verify) decide on muda's page: at each checkpoint the agent posts cards to the project, each recommending one answer with its evidence, and waits for your Send, then records through `muda record` as before and posts again. The baseline takes a role per workflow, findings take an order and Approve, Exempt or Later, and the fix plan, the merge and the verified effect take buttons. The scratch reports are gone. Starting a record and recipe submission text stay in chat; muda-design is unchanged.
