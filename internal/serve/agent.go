@@ -17,8 +17,8 @@ import (
 
 	"github.com/subaud-tools/muda/internal/store"
 	"github.com/subaud-tools/tools-common/channelmcp"
-	"github.com/subaud-tools/tools-common/localweb"
 	"github.com/subaud-tools/tools-common/msgstate"
+	"github.com/subaud-tools/tools-common/pageserve"
 	"github.com/subaud-tools/tools-common/threadstore"
 )
 
@@ -316,7 +316,9 @@ func (s *Server) agentReport(w http.ResponseWriter, r *http.Request) {
 
 // agentOpen is POST /api/agent/open: it creates the project by title or finds it
 // by title or id, adds groups, and makes the session its owner, which brings the
-// session what the project has not answered.
+// session what the project has not answered. Its "tab" says where the page went:
+// the session's Chrome window ("window"), a page tab ("reused"), or none is open
+// ("opened": the channel opens the browser).
 func (s *Server) agentOpen(w http.ResponseWriter, r *http.Request) {
 	var b struct {
 		Session string        `json:"session"`
@@ -324,6 +326,7 @@ func (s *Server) agentOpen(w http.ResponseWriter, r *http.Request) {
 		Project int64         `json:"project"`
 		Title   string        `json:"title"`
 		Groups  []store.Group `json:"groups"`
+		pageserve.Where
 	}
 	if err := decode(r, &b); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
@@ -354,29 +357,12 @@ func (s *Server) agentOpen(w http.ResponseWriter, r *http.Request) {
 	s.touch(b.Session, b.Label)
 	s.wakeAll()
 	s.changed(p.ID)
+	id := strconv.FormatInt(p.ID, 10)
+	url := s.PageURL + "#/p/" + id
 	writeJSON(w, http.StatusOK, map[string]any{
 		"project": p.ID, "title": p.Title, "created": created,
-		"url": s.PageURL + "#/p/" + strconv.FormatInt(p.ID, 10), "tab": s.showIn(p.ID),
+		"url": url, "tab": pageserve.Show(b.Where, url, s.events, id),
 	})
-}
-
-// showIn puts the project in a page tab when one is open, and says which
-// happened: "reused" (a tab shows it, moved to it, or only tabs on other projects
-// are open, which list it in their bar) or "opened" (no tab is open).
-func (s *Server) showIn(project int64) string {
-	if s.tabs == nil {
-		return "opened"
-	}
-	page := strconv.FormatInt(project, 10)
-	c := s.tabs.Pick(page)
-	switch c.Kind {
-	case localweb.TabNone:
-		return "opened"
-	case localweb.TabMove:
-		s.tabs.Moved(c.Tab, page)
-		s.events.Emit("show", map[string]string{"tab": c.Tab, "page": page})
-	}
-	return "reused"
 }
 
 // agentPost is POST /api/agent/post: jobs, stages, groups and cards in one

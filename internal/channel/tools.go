@@ -76,12 +76,15 @@ func plain(err error) error {
 	return err
 }
 
-// open makes this session the project's owner and shows its page.
+// open makes this session the project's owner and shows its page: with where the
+// session runs in tmux, serve puts it in the session's Chrome window, or a tab.
+// Only when serve answers "opened" does this open the browser.
 func open(ctx context.Context, ch *pageserve.Channel, args json.RawMessage) (string, error) {
 	body, err := withSession(ch, args)
 	if err != nil {
 		return "", err
 	}
+	ch.ID.Where.Into(body)
 	var out map[string]any
 	if _, err := ch.Client.Do(ctx, http.MethodPost, "/api/agent/open", body, &out); err != nil {
 		return "", plain(err)

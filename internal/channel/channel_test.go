@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,6 +26,7 @@ type rig struct {
 	client *pageserve.Client
 	base   string
 	opened []string
+	where  pageserve.Where
 }
 
 func newRig(t *testing.T) *rig {
@@ -48,7 +50,7 @@ func newRig(t *testing.T) *rig {
 func (r *rig) call(session, tool, args string) (string, error) {
 	r.t.Helper()
 	spec := channel.Spec("v")
-	ch := pageserve.New(spec, pageserve.Identity{Session: session, Harness: "pi", CWD: "/w/a"}, r.client)
+	ch := pageserve.New(spec, pageserve.Identity{Session: session, Harness: "pi", CWD: "/w/a", Where: r.where}, r.client)
 	ch.Open = func(u string) error { r.opened = append(r.opened, u); return nil }
 	return spec.Call(context.Background(), ch, tool, json.RawMessage(args))
 }
@@ -160,6 +162,37 @@ func TestOpenCreatesAProject(t *testing.T) {
 	}
 	if len(r.opened) != 1 || r.opened[0] != "http://page.test/?t=tok#/p/"+strconv.FormatInt(id, 10) {
 		t.Fatalf("opened %v", r.opened)
+	}
+}
+
+// A session with a Chrome window gets the page there, and the browser is not
+// opened as well.
+func TestOpenGoesToTheSessionsWindow(t *testing.T) {
+	dir := t.TempDir()
+	log := filepath.Join(dir, "calls")
+	script := "#!/bin/sh\necho \"$*\" >> \"" + log + "\"\n" +
+		"if [ \"$1\" = terminal ]; then echo '{\"state\":\"attached\",\"window\":true}'; else echo '{}'; fi\n"
+	if err := os.WriteFile(filepath.Join(dir, "proj"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	r := newRig(t)
+	r.where = pageserve.Where{Socket: "/tmp/tmux-501/ws", Pane: "%3"}
+	got := r.must("s1", "muda_open", openArgs)
+	if got["tab"] != "window" {
+		t.Fatalf("tab %v, want window", got["tab"])
+	}
+	if len(r.opened) != 0 {
+		t.Fatalf("the browser opened too: %v", r.opened)
+	}
+	calls, err := os.ReadFile(log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "window --socket /tmp/tmux-501/ws --pane %3 --right " + got["url"].(string) + " --keep-view --json"
+	if !strings.Contains(string(calls), want) {
+		t.Fatalf("proj called %q, want %q", calls, want)
 	}
 }
 

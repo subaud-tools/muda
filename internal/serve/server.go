@@ -29,12 +29,15 @@ type Server struct {
 
 	st     *store.Store
 	events *pageserve.Events
-	tabs   *localweb.Tabs
 	ag     agents
 }
 
 // New returns a Server over st.
-func New(st *store.Store) *Server { return &Server{st: st, events: pageserve.NewEvents()} }
+func New(st *store.Store) *Server {
+	events := pageserve.NewEvents()
+	events.Tabs = localweb.NewTabs(nil) // pageserve.Show reads it, and Run keeps it
+	return &Server{st: st, events: events}
+}
 
 // Handler is muda's own /api/ routes; pageserve adds events, poll and stop.
 func (s *Server) Handler() http.Handler {
@@ -59,6 +62,7 @@ type Options struct {
 
 // Run serves st until ctx ends or /api/stop. Deliveries the last serve left in
 // flight go back to their scopes' owners once it holds the machine's one serve.
+// A serve that wrote its entry closes st as it stops.
 func Run(ctx context.Context, st *store.Store, o Options) error {
 	sub, err := fs.Sub(assets, "assets")
 	if err != nil {
@@ -67,13 +71,19 @@ func Run(ctx context.Context, st *store.Store, o Options) error {
 	s := New(st)
 	return pageserve.Run(ctx, pageserve.Options{
 		Live: Live(), Assets: page.With(sub), API: s.Handler(), Events: s.events, Port: o.Port, Version: o.Version, Log: o.Log,
-		Tabs: func(t *localweb.Tabs) { s.tabs = t },
 		OnStart: func(ctx context.Context, url string) {
 			s.PageURL = url
 			// After pageserve's check that no other serve runs: this one's
 			// deliveries are not the last serve's to end.
 			if _, err := st.Threads.Interrupt(ctx); err != nil && o.Log != nil {
 				_, _ = fmt.Fprintf(o.Log, "muda serve: deliveries left in flight were not sent again: %v\n", err)
+			}
+		},
+		// Before the entry goes, so a restart opens the database after this
+		// serve has closed it.
+		OnStop: func(context.Context) {
+			if err := st.Close(); err != nil && o.Log != nil {
+				_, _ = fmt.Fprintf(o.Log, "muda serve: closing the database: %v\n", err)
 			}
 		},
 	})

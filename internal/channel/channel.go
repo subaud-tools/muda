@@ -14,7 +14,7 @@ import (
 
 // Instructions are the standing guidance the agent gets with the channel.
 const Instructions = `muda's page is where the user reviews a project: a named set of groups (repositories or accounts), each job's stages, and the cards you post for them. Every review decision is made on the page, not in chat.
-- muda_open creates a project by title with its groups, or opens one, and makes this session its owner; any later session may open it and take over, bringing the user's unanswered messages with it.
+- muda_open creates a project by title with its groups, or opens one, and makes this session its owner; any later session may open it and take over, bringing the user's unanswered messages with it. Its answer's tab says where the page went: "window" (the session's own Chrome window beside its terminal), "reused" (a muda tab already open shows the project or lists it in its top bar) or "opened" (no muda tab was open, so a new one opened).
 - muda_post posts or revises jobs, stages, groups and cards in one transaction. Give every card a title. Set kind "finding" on every finding, and its waste class in class: a finding needs at least one evidence entry and a basis of measured or suspected, and each evidence entry names its run, job, file, resource or bill line. Post what the record or tool printed; never restate a gate result in your own words.
 - A card's answers are one of four kinds: buttons (options), rows (a choice per row), order (rows to drag into order) or fields. You supply the words and the page knows only the kinds.
 - The user's choices and notes reach you together when they press Send, as an event from muda: <channel source="muda" project="…" send_id="…"> in pi, or a turn whose first line is muda event project=… send_id=… in Claude Code. On a Send that takes more than a moment, first call muda_reply with its send id, state working and one line on what you are doing. Settle every Send: answered, declined or failed, with why.
@@ -56,7 +56,7 @@ const cardSchema = `{"type":"object","properties":{` +
 // those are the user's, on the page.
 func Tools() []channelmcp.Tool {
 	return []channelmcp.Tool{
-		{Name: "muda_open", Description: "Create a project by title with its groups, or open one by title or id, and make this session its owner, which brings it the user's unanswered messages. Opens the project's page, reusing an open tab. Returns the project's id and URL.",
+		{Name: "muda_open", Description: "Create a project by title with its groups, or open one by title or id, and make this session its owner, which brings it the user's unanswered messages. Opens the project's page: a session with its own Chrome window gets it there (tab: window); otherwise a muda tab already open is reused, showing the project or listing it in its top bar (tab: reused), and only with no muda tab open does a new one open (tab: opened). Returns the project's id, URL and tab.",
 			InputSchema: schema(`{"type":"object","properties":{"title":{"type":"string"},"project":{"type":"integer","description":"an existing project's id, instead of its title"},` + groupsSchema + `}}`)},
 		{Name: "muda_post", Description: "Post or revise jobs, stages, groups and cards, all in one transaction. Refused whole, naming the card and field, for a finding with no evidence entry or no measured or suspected basis, or an evidence entry that names no run, job, file, resource or bill line. Post again after every record write. Returns where the project stands.",
 			InputSchema: schema(`{"type":"object","properties":{"project":{"type":"integer"},` +
