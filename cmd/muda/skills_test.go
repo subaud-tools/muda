@@ -1081,7 +1081,15 @@ func TestUnmergedFixedReopenRoute(t *testing.T) {
 
 // Court's live-run direction: every stop for the human ends with one concrete
 // "Your move" ask, and the agent may offer to merge, never bypassing a gate.
-// Both rules close every skill's Rules section, byte-identical in all six.
+// mergingRule closes every skill's Rules section, byte-identical in all six.
+const mergingRule = `**Merging:** only on an explicit yes to that PR, every required check green on
+the reported head: ` + "`gh pr merge N --squash --match-head-commit SHA`" + `. No admin
+bypass, removed check, or gate-passing label unless a ` + "`record-pr`" + ` label or the
+human agreed. A fix PR merges only after Phase 1 verify is shown.
+`
+
+// guidedRules is what a skill still in chat ends its Rules with. Skills on the
+// page carry the page rule in place of its Messages rule.
 const guidedRules = `**Messages:** recommend, never survey: decide every answer (order, labels,
 approval). One line per checkpoint item: what, basis, key number,
 recommendation; full evidence and every recipe outcome go to a named,
@@ -1090,11 +1098,10 @@ bullets; no open "go ahead?". End with one ask: "**Your move:** reply 'yes' or
 name changes. Next: what follows." Ready PR: "say 'merge' and I'll merge #N
 (link) once green, or merge and reply 'merged'".
 
-**Merging:** only on an explicit yes to that PR, every required check green on
-the reported head: ` + "`gh pr merge N --squash --match-head-commit SHA`" + `. No admin
-bypass, removed check, or gate-passing label unless a ` + "`record-pr`" + ` label or the
-human agreed. A fix PR merges only after Phase 1 verify is shown.
-`
+` + mergingRule
+
+// onPage lists the skills whose checkpoints are posted to muda's page.
+var onPage = map[string]bool{"muda": true}
 
 func rulesSection(t *testing.T, text string) string {
 	t.Helper()
@@ -1118,8 +1125,12 @@ func TestGuidedMessageAndMergeRules(t *testing.T) {
 		}
 		text := string(b)
 		rules := rulesSection(t, text)
-		if !strings.HasSuffix(rules, "\n\n"+guidedRules+"\n") {
-			t.Errorf("%s: Rules must end with the shared guided and merging rules, verbatim", n)
+		want := guidedRules
+		if onPage[n] {
+			want = mergingRule
+		}
+		if !strings.HasSuffix(rules, "\n\n"+want+"\n") {
+			t.Errorf("%s: Rules must end with the shared rules, verbatim", n)
 		}
 		if k := strings.Index(rules, "**Messages:**"); k >= 0 {
 			if first == "" {
@@ -1128,7 +1139,11 @@ func TestGuidedMessageAndMergeRules(t *testing.T) {
 				t.Errorf("%s: the shared rules differ from the entry skill's copy", n)
 			}
 		}
-		if strings.Count(text, "**Messages:**") != 1 || strings.Count(text, "**Merging:**") != 1 {
+		messages := 1
+		if onPage[n] {
+			messages = 0
+		}
+		if strings.Count(text, "**Messages:**") != messages || strings.Count(text, "**Merging:**") != 1 {
 			t.Errorf("%s: the shared rules must appear exactly once", n)
 		}
 		if strings.Contains(preflight(t, text), "Your move") {
@@ -1175,6 +1190,32 @@ func TestGuidedMessageAndMergeRules(t *testing.T) {
 	b, _ := muda.Content.ReadFile("skills/muda/SKILL.md")
 	if !strings.Contains(norm(string(b)), "never route on unmerged state") {
 		t.Error("muda lost: never route on unmerged state")
+	}
+}
+
+// Plan 3: the loop's checkpoints are posted to muda's page and decided by Send.
+// The entry skill holds the page rule; the record is still written only by the
+// record CLI, and starting a record and recipe submission text stay in chat.
+func TestEntryPageRule(t *testing.T) {
+	b, e := muda.Content.ReadFile("skills/muda/SKILL.md")
+	if e != nil {
+		t.Fatal(e)
+	}
+	text := norm(string(b))
+	rule := norm(rulesSection(t, string(b)))
+	for _, s := range []string{"**Page:**", "`muda_status` must answer", "**STOP** and give the install step", "the muda plugin (Claude Code)", "channels.tools (pi)",
+		"`muda_open` the project (user's title, repositories as groups", "`muda_post`", "job `deployments`", "`baseline`, `findings`, `fix-plan`, `verify`",
+		"kind, class, basis, evidence, recommendation, answers", "one chat line", "wait for Send", "`muda_reply`", "record through the record CLI",
+		"`muda_post` again with what the record says", "Never ask in chat what a card asks", "a STOP's question is a `call` card",
+		"The Your move merge ask", "Merge and Not yet", "Starting a record and recipe submission text stay in chat"} {
+		if !strings.Contains(rule, norm(s)) {
+			t.Error("page rule missing", s)
+		}
+	}
+	for _, s := range []string{"scratch report", ".muda-diagnose.md", "reply 'merged'"} {
+		if strings.Contains(text, s) {
+			t.Error("stale", s)
+		}
 	}
 }
 
