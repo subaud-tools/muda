@@ -1,0 +1,10 @@
+[kempt]
+spec = 2
+
+[[packages.integration.json-merge]]
+file = "~/.claude/settings.json"
+merge = { extraKnownMarketplaces = { subaud-tools = { source = { source = "github", repo = "subaud-tools/plugins" }, autoUpdate = true } }, enabledPlugins = { "muda@subaud-tools" = true } }
+
+[[packages.integration.json-merge]]
+file = "~/.pi/agent/channels.json"
+merge = { channelServers = { muda = { command = "muda", args = ["channel"] } } }

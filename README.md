@@ -49,6 +49,27 @@ You can also get the skills for pi from this repository as a package:
 not the binary. Install the binary first. Each skill checks for a compatible
 muda before it starts.
 
+### Managed setup
+
+A release includes `muda_setup.tar.gz` beside its binaries. With kempt 0.13.0 or newer, add `setup = true` to the Muda download declaration:
+
+```toml
+[kempt]
+spec = 2
+
+[[packages.muda.download]]
+site = "muda.tools"
+tool = "muda"
+bin = "muda"
+setup = true
+```
+
+The release-bound setup installs the six built-in skills for Claude Code and pi, enables `muda@subaud-tools` in Claude Code, and registers `muda channel` in pi. It leaves unrelated settings and pi's package list alone. Existing skill files are adopted only when their front matter has both the matching `name` and `muda-owned` values; kempt 0.13.0 introduced the `adopt-markers` rule this requires.
+
+The archive contains only the stock skills, not the reference standard, the skills README, or synced pack content. The direct `muda skills install` command and synced-pack refresh continue to manage pack skills separately.
+
+For release builds, `muda setup-bundle --version X.Y.Z --out muda_setup.tar.gz` writes the embedded declaration and stock files without installing anything or opening the page. The publisher supplies the exact release version, including an RC suffix.
+
 ## Quickstart
 
 muda needs a GitHub token. It uses `GH_TOKEN`, then `GITHUB_TOKEN`, then

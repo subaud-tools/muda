@@ -12,20 +12,24 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	commonskills "github.com/subaud-tools/tools-common/skills"
 )
+
+// UserTargets maps Muda's existing agent names to the shared user destinations.
+func UserTargets() map[string]string {
+	targets := commonskills.UserTargets()
+	return map[string]string{"claude": targets["claude-code"], "pi": targets["pi"]}
+}
 
 // Target validates only the active scope's arguments; it never consults cwd or
 // the process home. Project callers must supply an existing Git root.
 func Target(agent, scope, home, projectRoot string) (string, string, error) {
-	var rel string
-	switch agent {
-	case "claude":
-		rel = ".claude/skills"
-	case "pi":
-		rel = ".pi/agent/skills"
-	default:
+	target, ok := UserTargets()[agent]
+	if !ok {
 		return "", "", fmt.Errorf("unsupported agent: %s", agent)
 	}
+	rel := strings.TrimPrefix(target, "~/")
 	base := home
 	switch scope {
 	case "user":
