@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0
+
+- Releases include a kempt setup bundle for the six built-in skills and existing Claude Code plugin and pi channel. The bundle uses the shared skill destinations and adopts existing skills only when both their name and `muda-owned` marker match. Requires kempt 0.13.0 or newer.
+- `muda setup-bundle` generates the release-bound declaration and stock skill files without installing anything. The page, channel, synced-pack skills and project installation behavior are unchanged.
+
 ## 0.8.0
 
 - `muda skills install` also installs the skill of each synced pack that has one, beside muda's own and under the name in the skill's front matter. The text stays the pack's; a `.muda-pack` file beside it marks the copy as muda's to replace. A pack skill named like one of muda's own, or a skill of that name muda did not install, is refused and nothing is written.
