@@ -28,6 +28,7 @@ func newApp(env cli.Env) *tools.App {
 	app.Register(cli.Recipe())
 	app.Register(cli.Standard())
 	app.Register(cli.Skills())
+	app.Register(cli.SetupBundle())
 	app.Register(cli.Pack(func() (func([]string) bool, error) { return cli.CommandChecker(app) }))
 	for _, c := range cli.PageCommands(os.Stdin) {
 		app.Register(c)

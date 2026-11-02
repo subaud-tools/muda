@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/subaud-tools/muda/internal/content"
+	commonskills "github.com/subaud-tools/tools-common/skills"
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,8 +53,12 @@ func knownName(n string) bool {
 	return false
 }
 func owned(b []byte, n string) bool {
-	m, _, e := frontmatter(b)
-	return e == nil && m.Name == n && m.Owned == n && knownName(n)
+	return OwnsBuiltin(n, b)
+}
+
+// OwnsBuiltin requires a known stock name and its exact ownership marker.
+func OwnsBuiltin(n string, b []byte) bool {
+	return knownName(n) && commonskills.OwnsWithMarkers(n, b, map[string]string{"muda-owned": n})
 }
 
 var (
