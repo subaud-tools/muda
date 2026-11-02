@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- The channel no longer logs `channelmcp: ignored report {"event":"activity",...}` each time a session starts or stops working, and `muda serve` takes those working and idle reports and ignores them (tools-common 0.53.1).
+
 ## 0.9.0
 
 - Releases include a kempt setup bundle for the six built-in skills and existing Claude Code plugin and pi channel. The bundle uses the shared skill destinations and adopts existing skills only when both their name and `muda-owned` marker match. Requires kempt 0.13.0 or newer.
