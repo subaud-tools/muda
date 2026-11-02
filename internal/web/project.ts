@@ -884,7 +884,6 @@ export function project(s: Shell, first: ProjectRoute): Page {
         })),
       }),
     );
-    columns.setRightEmpty(!messages.length, `${id}/${threadId}`);
   }
 
   function drawFoot(): void {

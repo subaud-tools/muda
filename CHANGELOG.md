@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.2
+
+- The thread column stays where you left it: a card with no messages no longer folds it, and moving between cards no longer moves it. The toggle sets one remembered setting, kept across cards and reloads (tools-common 0.57.0).
+
 ## 0.9.1
 
 - The channel no longer logs `channelmcp: ignored report {"event":"activity",...}` each time a session starts or stops working, and `muda serve` takes those working and idle reports and ignores them (tools-common 0.53.1).

@@ -1538,7 +1538,6 @@ function project(s, first) {
         }))
       })
     );
-    columns.setRightEmpty(!messages.length, `${id}/${threadId}`);
   }
   function drawFoot() {
     if (!view) return;

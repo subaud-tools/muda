@@ -178,8 +178,8 @@ async function atWidth(browser, width) {
   const approve = card.locator('[data-option="approve"]');
   check('a card shows its answers', await approve.isVisible());
   check(
-    'an empty thread folds to its strip',
-    await page.locator('.kit-right-col.kit-collapsed').isVisible(),
+    'an empty thread stays open',
+    await page.locator('.kit-right-col:not(.kit-collapsed)').isVisible(),
   );
   await fits('a card');
 
