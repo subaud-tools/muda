@@ -263,3 +263,12 @@ func TestScanNeedsAFolder(t *testing.T) {
 	r.do("GET", "/api/scan?folder=/no/such/folder", nil, 422, nil)
 	r.do("GET", "/api/scan", nil, 422, nil)
 }
+
+// The harness reports each time a session starts or stops working; muda takes
+// the report and ignores it.
+func TestAnActivityReportIsTakenAndIgnored(t *testing.T) {
+	r := newRig(t)
+	for _, working := range []string{"working", "idle"} {
+		r.do(http.MethodPost, "/api/agent/report", map[string]string{"session": "s1", "event": "activity", "token": working}, http.StatusNoContent, nil)
+	}
+}
