@@ -302,11 +302,10 @@ func (s *Server) agentReport(w http.ResponseWriter, r *http.Request) {
 		_, err = s.st.Threads.Landed(r.Context(), b.Session, b.Token)
 	case channelmcp.ReportTurnEnded:
 		_, err = s.st.Threads.TurnEnded(r.Context(), b.Session)
-	case channelmcp.ReportActivity:
-		w.WriteHeader(http.StatusNoContent)
-		return
 	default:
-		writeErr(w, http.StatusBadRequest, fmt.Sprintf("event %q: want held, landed or turn_ended", b.Event))
+		// activity (whether the session is working), or an event a newer
+		// harness added: taken and ignored, not refused.
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if err != nil {
