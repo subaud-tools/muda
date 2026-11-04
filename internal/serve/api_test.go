@@ -272,3 +272,11 @@ func TestAnActivityReportIsTakenAndIgnored(t *testing.T) {
 		r.do(http.MethodPost, "/api/agent/report", map[string]string{"session": "s1", "event": "activity", "token": working}, http.StatusNoContent, nil)
 	}
 }
+
+// An event a newer harness sends that muda doesn't know yet is taken and
+// ignored, not refused: a 400 would reach the harness's stderr every turn.
+func TestAnUnknownReportEventIsTakenAndIgnored(t *testing.T) {
+	r := newRig(t)
+	r.do(http.MethodPost, "/api/agent/report", map[string]string{"session": "s1", "event": "future_event"}, http.StatusNoContent, nil)
+	r.do(http.MethodPost, "/api/agent/report", map[string]string{"session": "s1", "event": "future_event", "token": "t7"}, http.StatusNoContent, nil)
+}

@@ -1529,7 +1529,7 @@ function project(s, first) {
         }).slice(1) : void 0,
         messages: messages.map((m) => ({
           id: m.id,
-          from: m.who === "you" ? "court" : "agent",
+          from: m.who === "you" ? "user" : "agent",
           at: m.when,
           words: m.who === "you" ? "" : m.who,
           state: m.who === "you" ? m.state : void 0,

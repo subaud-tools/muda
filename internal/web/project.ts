@@ -875,7 +875,7 @@ export function project(s: Shell, first: ProjectRoute): Page {
           : undefined,
         messages: messages.map((m) => ({
           id: m.id,
-          from: m.who === 'you' ? ('court' as const) : ('agent' as const),
+          from: m.who === 'you' ? ('user' as const) : ('agent' as const),
           at: m.when,
           words: m.who === 'you' ? '' : m.who,
           state: m.who === 'you' ? m.state : undefined,
