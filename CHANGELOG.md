@@ -3,6 +3,7 @@
 ## 0.9.3
 
 - A report event muda doesn't know yet (one a newer pi adds) is taken and ignored: the channel drops it without a log line (tools-common 0.66.0, from 0.57.0), and `muda serve` answers 204 instead of a 400 the channel logged on every turn.
+- The thread names your messages 'user', not a personal name (the page kit's thread, tools-common 0.60.0).
 
 ## 0.9.2
 
